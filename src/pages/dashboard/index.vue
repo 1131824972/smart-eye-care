@@ -3,7 +3,7 @@ import KnowledgeGraph from "@/components/KnowledgeGraph.vue"
 import YunnanMap from "@/components/YunnanMap.vue"
 import { ref } from "vue"
 
-// 模拟一些顶部关键数据
+// 模拟顶部关键指标数据
 const stats = ref([
   { title: "今日确诊病例", value: 128, unit: "例" },
   { title: "高风险地区", value: 5, unit: "个" },
@@ -97,11 +97,12 @@ const stats = ref([
 /* 全屏深色背景 */
 .datav-container {
   width: 100%;
-  /* ✨ 细节优化：允许垂直滚动，最小高度占满屏幕 */
+  /* 🌟 核心修复：允许最小高度占满屏幕，但内容多了可以滚动 */
   min-height: 100vh;
-  overflow-y: auto;
+  overflow-y: auto; /* 开启垂直滚动 */
 
   background-color: #03081b;
+  /* 科技感网格背景 */
   background-image:
     radial-gradient(circle at 50% 50%, rgba(33, 150, 243, 0.1) 0%, transparent 50%),
     linear-gradient(0deg, rgba(0, 0, 0, 0.2) 1px, transparent 1px),
@@ -112,7 +113,7 @@ const stats = ref([
   box-sizing: border-box;
 }
 
-/* ✨ 细节优化：自定义滚动条样式 (深蓝色科技感) */
+/* 🌟 细节优化：美化滚动条 (深蓝色) */
 .datav-container::-webkit-scrollbar {
   width: 8px;
 }
@@ -213,7 +214,7 @@ const stats = ref([
   position: relative;
 }
 .scrollable {
-  overflow-y: auto; /* 日志列表内部也可以滚动 */
+  overflow-y: auto;
 }
 .scrollable::-webkit-scrollbar { width: 4px; }
 .scrollable::-webkit-scrollbar-thumb { background: #1c3e72; }

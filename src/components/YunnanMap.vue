@@ -3,27 +3,35 @@ import axios from "axios"
 import * as echarts from "echarts"
 import "echarts-gl"
 import { onBeforeUnmount, onMounted, ref } from "vue"
+import { ElMessage } from "element-plus"
 
 const chartRef = ref(null)
 let myChart = null
 
-// 模拟数据：稍微打乱一下高度，让起伏更明显，更有山脉的感觉
+// 模拟数据：给不同城市设置明显的“高度差异”，制造沟壑感
 const mockData = [
-  { name: "昆明市", value: 88, height: 6 },
-  { name: "大理白族自治州", value: 45, height: 3.5 },
-  { name: "丽江市", value: 70, height: 4.5 },
-  { name: "西双版纳傣族自治州", value: 30, height: 2 },
-  { name: "迪庆藏族自治州", value: 95, height: 8 }, // 海拔高，设高一点
-  { name: "曲靖市", value: 65, height: 4 },
-  { name: "怒江傈僳族自治州", value: 80, height: 7 },
-  { name: "昭通市", value: 55, height: 5 },
-  { name: "文山壮族苗族自治州", value: 40, height: 2.5 }
+  { name: "昆明市", value: 88, height: 5.5, info: "省会城市，医疗资源集中" },
+  { name: "大理白族自治州", value: 45, height: 3.0, info: "紫外线较强，需注意防护" },
+  { name: "丽江市", value: 70, height: 4.5, info: "高海拔旅游区，干眼症高发" },
+  { name: "西双版纳傣族自治州", value: 30, height: 1.5, info: "湿度大，发病率较低" },
+  { name: "迪庆藏族自治州", value: 95, height: 8.0, info: "极高海拔，缺氧环境影响泪膜" },
+  { name: "曲靖市", value: 65, height: 3.5, info: "工业城市，空气质量影响" },
+  { name: "怒江傈僳族自治州", value: 80, height: 6.5, info: "峡谷地形，风速影响" },
+  { name: "昭通市", value: 55, height: 4.0, info: "高原季风气候" },
+  { name: "红河哈尼族彝族自治州", value: 50, height: 2.5, info: "梯田农业区" },
+  { name: "文山壮族苗族自治州", value: 40, height: 2.0, info: "喀斯特地貌" },
+  { name: "玉溪市", value: 60, height: 3.2, info: "抚仙湖周边湿度适宜" },
+  { name: "楚雄彝族自治州", value: 58, height: 3.8, info: "干热河谷气候" },
+  { name: "普洱市", value: 35, height: 1.8, info: "森林覆盖率高" },
+  { name: "临沧市", value: 38, height: 2.2, info: "亚热带季风气候" },
+  { name: "德宏傣族景颇族自治州", value: 32, height: 1.2, info: "雨量充沛" },
+  { name: "保山市", value: 42, height: 2.8, info: "干湿季节分明" }
 ]
 
 onMounted(async () => {
   if (!chartRef.value) return
   myChart = echarts.init(chartRef.value)
-  myChart.showLoading({ text: "正在加载数字孪生模型...", color: "#00eaff", maskColor: "rgba(0,0,0,0.8)", textColor: "#fff" })
+  myChart.showLoading({ text: "正在构建 3D 地形...", color: "#00eaff", maskColor: "rgba(0,0,0,0.5)", textColor: "#fff" })
 
   try {
     const res = await axios.get("https://geo.datav.aliyun.com/areas_v2/bound/530000_full.json")
@@ -31,38 +39,16 @@ onMounted(async () => {
     myChart.hideLoading()
 
     myChart.setOption({
-      // 背景设为透明，依靠父级背景
       backgroundColor: 'transparent',
-      tooltip: {
-        show: true,
-        backgroundColor: "rgba(0,18,36,0.9)",
-        borderColor: "#00eaff",
-        borderWidth: 1,
-        padding: [10, 15],
-        textStyle: { color: "#fff", fontSize: 14 },
-        formatter: (params) => {
-          if (!params.name) return ''
-          return `
-            <div style="display:flex;align-items:center;margin-bottom:5px">
-              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#00eaff;margin-right:8px"></span>
-              <span style="font-weight:bold;font-size:16px">${params.name}</span>
-            </div>
-            <div style="color:#aaa;font-size:12px">干眼症风险指数：<b style="color:#f56c6c;font-size:16px">${params.value || '未知'}</b></div>
-          `
-        }
-      },
-      // 视觉映射：调整为更有层次的蓝紫色
+      tooltip: { show: false }, // 关闭默认 tooltip，用点击事件代替，防止遮挡
+
+      // 视觉映射：颜色更深邃，对比度更高
       visualMap: {
         show: false,
         min: 0,
         max: 100,
         inRange: {
-          color: [
-            '#0f1c3a', // 低海拔/低风险：深邃蓝
-            '#1b3a69',
-            '#235c96',
-            '#00eaff'  // 高风险：亮青色
-          ]
+          color: ['#0B1B32', '#14365D', '#1D5A8C', '#2882C0', '#30A5F2', '#6DD5FA']
         }
       },
       series: [{
@@ -70,100 +56,94 @@ onMounted(async () => {
         map: 'yunnan',
         name: '云南干眼症分布',
 
-        // === 核心：高度与体积 ===
-        regionHeight: 5, // 拉高厚度，增加体积感
-        boxDepth: 100, // 场景深度
+        // === ⛰️ 地形起伏核心配置 ===
+        regionHeight: 4, // 基础厚度
+        data: mockData,  // 数据中包含 height 属性，echarts-gl 会自动识别并叠加高度
 
-        // === 核心：真实感材质 ===
+        // === 🎬 电影级光影 ===
         shading: 'realistic',
         realisticMaterial: {
-          roughness: 0.3, // 粗糙度：调低一点，让它有点像磨砂金属
-          metalness: 0.5, // 金属度：调高一点，增加反光质感
+          detailTexture: '',
+          roughness: 0.4, // 稍微粗糙一点，像岩石/磨砂
+          metalness: 0.3, // 一点点金属感
         },
 
-        // === 核心：后期特效 (好不好看全靠这个) ===
+        // 后期特效：增加阴影缝隙
         postEffect: {
           enable: true,
-          // 1. 环境光遮蔽 (SSAO)：增加积木缝隙的阴影，极大地增强立体感
           SSAO: {
             enable: true,
-            radius: 3, // 阴影半径
-            intensity: 1.2, // 阴影强度
+            radius: 4, // 阴影范围变大
+            intensity: 1.8, // 阴影变黑，立体感剧增
             quality: 'high'
-          },
-          // 2. 泛光 (Bloom)：让高亮边缘发出辉光
-          bloom: {
-            enable: true,
-            strength: 0.2,
-            radius: 0.5,
-            threshold: 0.8
-          },
-          // 3. 景深 (Depth of Field)：让远处稍微模糊，增加摄影感 (可选，不需要可关掉)
-          // depthOfField: {
-          //   enable: true,
-          //   focalDistance: 100,
-          //   focalRange: 20
-          // }
-        },
-
-        // === 核心：灯光系统 (告别死白光) ===
-        light: {
-          main: {
-            intensity: 0.8, // 降低主光源，避免过曝
-            shadow: true,   // 开启主光阴影
-            shadowQuality: 'high',
-            alpha: 40,      // 光照角度：从侧上方打下来
-            beta: -30
-          },
-          ambient: {
-            intensity: 0.4  // 提高环境光，让暗部也能看清颜色
           }
         },
 
-        // 数据
-        data: mockData,
+        // 灯光：消除奇怪亮斑，使用柔和的侧顶光
+        light: {
+          main: {
+            intensity: 1.0,
+            shadow: true,
+            shadowQuality: 'high',
+            alpha: 45, // 垂直角度
+            beta: -20  // 水平角度
+          },
+          ambient: {
+            intensity: 0.3 // 环境光暗一点，对比更强
+          }
+        },
 
         // 样式细节
         itemStyle: {
-          // 默认颜色 (如果没有数据覆盖)
-          color: '#0f1c3a',
-          borderColor: '#409EFF', // 边框颜色
+          color: '#14365D',
+          borderColor: '#409EFF',
           borderWidth: 0.5
         },
-
-        // 鼠标悬停高亮
         emphasis: {
-          label: {
-            show: true,
-            color: '#fff',
-            fontSize: 16,
-            fontWeight: 'bold',
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            padding: [3, 5],
-            borderRadius: 3
-          },
-          itemStyle: {
-            color: '#ffbd59', // 金色高亮
-            borderColor: '#fff',
-            borderWidth: 1
-          }
+          label: { show: true, color: '#fff', fontSize: 18, fontWeight: 'bold' },
+          itemStyle: { color: '#ffbd59' }
         },
 
-        // 视角控制
+        // 视角：稍微拉近一点
         viewControl: {
           projection: 'perspective',
-          autoRotate: true, // 开启自动旋转，增加动感！
-          autoRotateSpeed: 5, // 旋转速度慢一点
-          autoRotateAfterStill: 3, // 鼠标静止3秒后自动旋转
+          autoRotate: true,
+          autoRotateSpeed: 4,
           damping: 0.8,
-          alpha: 45, // 最佳俯视角度
-          beta: 10,
-          distance: 120, // 视距
+          alpha: 50,
+          beta: 5,
+          distance: 105,
           minAlpha: 20,
           maxAlpha: 80
         }
       }]
     })
+
+    // === 🖱️ 添加点击交互 ===
+    myChart.on('click', (params) => {
+      // 停止自动旋转，方便查看
+      myChart.setOption({ series: [{ viewControl: { autoRotate: false } }] })
+
+      // 查找详细信息
+      const cityData = mockData.find(item => item.name === params.name)
+      const info = cityData ? cityData.info : "暂无详细数据"
+      const value = params.value || "未知"
+
+      // 弹出提示 (这里用 Element Plus 的 Notification，显得高级)
+      ElMessage({
+        message: `已选中【${params.name}】\n发病率：${value}%\n分析：${info}`,
+        type: 'success',
+        duration: 5000,
+        showClose: true,
+        grouping: true,
+      })
+
+      // 3秒后恢复旋转
+      setTimeout(() => {
+        myChart.setOption({ series: [{ viewControl: { autoRotate: true } }] })
+      }, 3000)
+    })
+
   } catch (e) { console.error(e) }
 
   window.addEventListener("resize", () => myChart && myChart.resize())
