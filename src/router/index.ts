@@ -1,10 +1,11 @@
 import { type RouteRecordRaw, createRouter } from "vue-router"
 import { flatMultiLevelRoutes } from "./helper"
 import { routerConfig } from "./config"
-import { registerNavigationGuard } from "./guard" // 引入刚才写的守卫
+import { registerNavigationGuard } from "./guard"
 
 const Layout = () => import("@/layouts/index.vue")
-/** 常驻路由 */
+
+/** 常驻路由 (所有用户可见) */
 export const constantRoutes: RouteRecordRaw[] = [
   {
     path: "/redirect",
@@ -43,28 +44,30 @@ export const constantRoutes: RouteRecordRaw[] = [
         component: () => import("@/pages/dashboard/index.vue"),
         name: "Dashboard",
         meta: {
-          title: "首页",
+          title: "数据大屏",
           svgIcon: "dashboard",
           affix: true
         }
       }
     ]
   },
-  // === 你的业务菜单 ===
+  // === 核心业务菜单 ===
   {
     path: "/patient",
     component: Layout,
     redirect: "/patient/index",
+    // 添加 alwaysShow: true 确保即使只有一个子路由也能作为父级显示（可选）
     meta: {
-      title: "患者信息管理",
-      svgIcon: "search"
+      title: "信息采集",
+      svgIcon: "search", // 确保你在 icons 目录有这个svg，或者换成 elIcon: 'Edit'
+      elIcon: "Edit"
     },
     children: [
       {
         path: "index",
         component: () => import("@/pages/patient/index.vue"),
-        name: "PatientManagement",
-        meta: { title: "患者信息录入" }
+        name: "PatientCollect",
+        meta: { title: "患者录入" }
       }
     ]
   },
@@ -73,15 +76,16 @@ export const constantRoutes: RouteRecordRaw[] = [
     component: Layout,
     redirect: "/diagnosis/index",
     meta: {
-      title: "AI 辅助诊断",
-      svgIcon: "dashboard"
+      title: "辅助诊断",
+      svgIcon: "dashboard",
+      elIcon: "Monitor"
     },
     children: [
       {
         path: "index",
         component: () => import("@/pages/diagnosis/index.vue"),
-        name: "AIDiagnosis",
-        meta: { title: "智能诊断工作台" }
+        name: "DiagnosisWorkplace",
+        meta: { title: "AI 诊断台" }
       }
     ]
   },
@@ -90,15 +94,15 @@ export const constantRoutes: RouteRecordRaw[] = [
     component: Layout,
     redirect: "/history/index",
     meta: {
-      title: "病历档案管理",
-      svgIcon: "search"
+      title: "病历档案",
+      elIcon: "Document"
     },
     children: [
       {
         path: "index",
         component: () => import("@/pages/history/index.vue"),
-        name: "HistoryRecord",
-        meta: { title: "历史病例查询" }
+        name: "HistoryArchive",
+        meta: { title: "档案查询" }
       }
     ]
   }
@@ -106,13 +110,11 @@ export const constantRoutes: RouteRecordRaw[] = [
 
 export const dynamicRoutes: RouteRecordRaw[] = []
 
-/** 创建路由实例 (注意这里用了 export const，解决了 main.ts 的报错) */
 export const router = createRouter({
   history: routerConfig.history,
   routes: routerConfig.thirdLevelRouteCache ? flatMultiLevelRoutes(constantRoutes) : constantRoutes
 })
 
-/** 重置路由 */
 export function resetRouter() {
   try {
     router.getRoutes().forEach((route) => {
@@ -121,11 +123,9 @@ export function resetRouter() {
         router.hasRoute(name) && router.removeRoute(name)
       }
     })
-  }
-  catch {
+  } catch {
     window.location.reload()
   }
 }
 
-// 注册路由守卫 (这一步至关重要，否则登录后跳不转)
 registerNavigationGuard(router)
