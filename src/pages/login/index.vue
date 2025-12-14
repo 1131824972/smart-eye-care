@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useUserStore } from "@/pinia/stores/user"
-import { Lock, User, ChatDotRound, Timer, Bell } from "@element-plus/icons-vue"
+import { Lock, User, Bell, ChatDotRound, Clock } from "@element-plus/icons-vue"
 import { type FormInstance, type FormRules, ElMessage } from "element-plus"
 import { onMounted, reactive, ref } from "vue"
 import { useRouter } from "vue-router"
@@ -12,25 +12,25 @@ const loading = ref(false)
 const loginFormRef = ref<FormInstance | null>(null)
 const loginForm = reactive({ username: "admin", password: "123", code: "" })
 
-// 模拟资讯数据
+// === 模拟资讯数据，填充登录页内容 ===
 const newsList = [
   {
-    title: "系统公告：V5.0 模型上线",
-    desc: "集成了最新的 KAN 神经网络，对复杂地形下的干眼症预测准确率提升 15%。",
+    type: '公告',
+    title: '系统维护通知：KAN 模型引擎将于今晚 02:00 进行升级',
     icon: Bell,
-    color: "#E6A23C"
+    color: '#E6A23C'
   },
   {
-    title: "今日值班专家",
-    desc: "眼科主任医师：张伟 (09:00 - 17:00)\n主治医师：李娜 (14:00 - 22:00)",
+    type: '排班',
+    title: '今日专家：张伟主任 (眼表疾病科) 09:00-17:00 坐诊',
     icon: User,
-    color: "#409EFF"
+    color: '#409EFF'
   },
   {
-    title: "医学前沿",
-    desc: "《自然》期刊发布最新研究：云南高原强紫外线与泪膜破裂时间的量化关系。",
+    type: '知识',
+    title: '干眼症小贴士：高海拔地区紫外线强，建议患者户外佩戴护目镜',
     icon: ChatDotRound,
-    color: "#67C23A"
+    color: '#67C23A'
   }
 ]
 
@@ -51,7 +51,7 @@ function drawCaptcha() {
   canvas.height = height
   const ctx = canvas.getContext("2d")
   if (!ctx) return
-  ctx.fillStyle = "#f0f2f5"
+  ctx.fillStyle = "#f2f6fc" // 浅灰背景
   ctx.fillRect(0, 0, width, height)
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
   let code = ""
@@ -60,10 +60,8 @@ function drawCaptcha() {
     code += char
     ctx.font = "bold 24px Arial"
     ctx.fillStyle = `#${Math.random().toString(16).slice(2, 8)}`
-    const x = 20 + i * 25
-    const y = 28
     ctx.save()
-    ctx.translate(x, y)
+    ctx.translate(20 + i * 25, 28)
     ctx.rotate((Math.random() - 0.5) * 0.4)
     ctx.fillText(char, 0, 0)
     ctx.restore()
@@ -82,13 +80,12 @@ function handleLogin() {
     drawCaptcha()
     return
   }
-  if (!loginFormRef.value) return
-  loginFormRef.value.validate((valid) => {
+  loginFormRef.value?.validate((valid) => {
     if (valid) {
       loading.value = true
       userStore.login(loginForm)
         .then(() => {
-          router.push({ path: "/" })
+          router.push("/")
           ElMessage.success("登录成功")
         })
         .catch(() => {
@@ -102,63 +99,84 @@ function handleLogin() {
 
 <template>
   <div class="login-container">
-    <!-- 左侧：功能与资讯展示 -->
+    <!-- 左侧：品牌与资讯展示 -->
     <div class="login-left">
-      <div class="glass-content">
+      <div class="left-content">
         <div class="brand">
-          <img :src="logoImg" class="logo" />
-          <h1>智慧眼科诊疗系统</h1>
+          <img :src="logoImg" class="logo" alt="logo" />
+          <div class="text">
+            <h1>多模态干眼症智慧诊疗平台</h1>
+            <p>Multimodal Smart Dry Eye Care System</p>
+          </div>
         </div>
 
-        <p class="subtitle">Multimodal Smart Dry Eye Care System</p>
-
-        <!-- 资讯轮播 -->
-        <div class="info-carousel">
-          <el-carousel height="200px" direction="vertical" :autoplay="true" indicator-position="none">
-            <el-carousel-item v-for="(item, index) in newsList" :key="index">
-              <div class="info-card">
-                <div class="icon-box" :style="{ background: item.color }">
-                  <el-icon><component :is="item.icon" /></el-icon>
-                </div>
-                <div class="info-text">
-                  <h3>{{ item.title }}</h3>
-                  <p>{{ item.desc }}</p>
-                </div>
+        <div class="news-panel">
+          <div class="panel-header">
+            <span><el-icon><Clock /></el-icon> 实时动态</span>
+            <el-tag size="small" effect="plain">Live</el-tag>
+          </div>
+          <div class="news-list">
+            <div v-for="(item, i) in newsList" :key="i" class="news-item">
+              <div class="icon-box" :style="{ backgroundColor: item.color + '20', color: item.color }">
+                <el-icon><component :is="item.icon" /></el-icon>
               </div>
-            </el-carousel-item>
-          </el-carousel>
+              <div class="content">
+                <span class="tag" :style="{ color: item.color }">{{ item.type }}</span>
+                <span class="desc">{{ item.title }}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div class="system-status">
-          <span><el-icon><Timer /></el-icon> 系统运行正常</span>
-          <span>当前在线医生: 12 人</span>
+        <div class="system-stats">
+          <div class="stat-item">
+            <h2>128</h2>
+            <p>今日诊断</p>
+          </div>
+          <div class="stat-item">
+            <h2>98%</h2>
+            <p>模型准确率</p>
+          </div>
+          <div class="stat-item">
+            <h2>16</h2>
+            <p>覆盖州市</p>
+          </div>
         </div>
       </div>
-      <!-- 动态背景装饰 -->
-      <div class="bg-circle c1"></div>
-      <div class="bg-circle c2"></div>
+      <!-- 背景装饰 -->
+      <div class="circle c1"></div>
+      <div class="circle c2"></div>
     </div>
 
     <!-- 右侧：登录表单 -->
     <div class="login-right">
       <div class="form-wrapper">
-        <h2>用户登录</h2>
-        <p class="tip">请使用医院内网账号登录</p>
+        <div class="form-header">
+          <h2>用户登录</h2>
+          <p>欢迎回来，请使用医院内网账号登录</p>
+        </div>
+
         <el-form ref="loginFormRef" :model="loginForm" :rules="loginRules" size="large">
           <el-form-item prop="username">
-            <el-input v-model="loginForm.username" placeholder="账号" :prefix-icon="User" />
+            <el-input v-model="loginForm.username" placeholder="请输入账号" :prefix-icon="User" />
           </el-form-item>
           <el-form-item prop="password">
-            <el-input v-model="loginForm.password" type="password" placeholder="密码" :prefix-icon="Lock" show-password @keyup.enter="handleLogin" />
+            <el-input v-model="loginForm.password" type="password" placeholder="请输入密码" :prefix-icon="Lock" show-password @keyup.enter="handleLogin" />
           </el-form-item>
           <el-form-item prop="code">
-            <div class="code-box">
-              <el-input v-model="loginForm.code" placeholder="验证码" style="flex:1" @keyup.enter="handleLogin" />
-              <img :src="verifyCodeUrl" @click="drawCaptcha" class="code-img" title="刷新验证码" />
+            <div class="code-layout">
+              <el-input v-model="loginForm.code" placeholder="验证码" @keyup.enter="handleLogin" />
+              <img :src="verifyCodeUrl" @click="drawCaptcha" class="code-img" title="点击刷新" />
             </div>
           </el-form-item>
-          <el-button type="primary" :loading="loading" class="submit-btn" @click="handleLogin">登 录</el-button>
+          <el-button type="primary" :loading="loading" class="submit-btn" @click="handleLogin">
+            立即登录
+          </el-button>
         </el-form>
+
+        <div class="form-footer">
+          <span>忘记密码？请联系信息科</span>
+        </div>
       </div>
     </div>
   </div>
@@ -166,129 +184,147 @@ function handleLogin() {
 
 <style scoped lang="scss">
 .login-container {
+  display: flex;
   width: 100%;
   height: 100vh;
-  display: flex;
+  background-color: #fff;
   overflow: hidden;
 }
 
-// 左侧样式
+/* 左侧样式 */
 .login-left {
-  flex: 1.2;
-  background: linear-gradient(135deg, #001529 0%, #003a70 100%);
+  flex: 1;
+  background: linear-gradient(135deg, #001529 0%, #00467F 100%);
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
+  padding: 40px;
 
-  .glass-content {
+  .left-content {
     position: relative;
     z-index: 10;
-    width: 70%;
+    width: 100%;
+    max-width: 500px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    margin-bottom: 50px;
+    .logo { width: 60px; height: 60px; margin-right: 20px; }
+    h1 { font-size: 28px; margin: 0 0 5px 0; font-weight: 600; }
+    p { margin: 0; opacity: 0.7; font-size: 14px; letter-spacing: 1px; }
+  }
+
+  .news-panel {
     background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
-    border-radius: 20px;
-    padding: 40px;
-    border: 1px solid rgba(255,255,255,0.2);
-    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    border-radius: 16px;
+    padding: 25px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 40px;
 
-    .brand {
-      display: flex;
-      align-items: center;
-      margin-bottom: 10px;
-      .logo { width: 48px; margin-right: 15px; }
-      h1 { font-size: 28px; margin: 0; font-weight: 600; letter-spacing: 1px; }
-    }
-
-    .subtitle {
-      font-size: 14px;
-      opacity: 0.7;
-      margin-bottom: 30px;
-      padding-left: 63px;
-    }
-
-    .info-carousel {
-      .info-card {
-        background: rgba(0,0,0,0.2);
-        padding: 20px;
-        border-radius: 12px;
-        display: flex;
-        align-items: flex-start;
-        height: 100%;
-        .icon-box {
-          width: 40px;
-          height: 40px;
-          border-radius: 8px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 20px;
-          margin-right: 15px;
-          flex-shrink: 0;
-        }
-        .info-text {
-          h3 { margin: 0 0 5px 0; font-size: 16px; }
-          p { margin: 0; font-size: 13px; line-height: 1.5; opacity: 0.8; }
-        }
-      }
-    }
-
-    .system-status {
-      margin-top: 20px;
-      padding-top: 20px;
-      border-top: 1px solid rgba(255,255,255,0.1);
+    .panel-header {
       display: flex;
       justify-content: space-between;
-      font-size: 12px;
-      opacity: 0.6;
-      span { display: flex; align-items: center; gap: 5px; }
+      align-items: center;
+      margin-bottom: 20px;
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .news-item {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 15px;
+      &:last-child { margin-bottom: 0; }
+
+      .icon-box {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 15px;
+        flex-shrink: 0;
+      }
+
+      .content {
+        font-size: 13px;
+        line-height: 1.5;
+        .tag { font-weight: bold; margin-right: 5px; }
+        .desc { opacity: 0.8; }
+      }
     }
   }
 
-  // 装饰圆球
-  .bg-circle {
+  .system-stats {
+    display: flex;
+    justify-content: space-between;
+    text-align: center;
+    .stat-item {
+      h2 { font-size: 32px; margin: 0; font-weight: bold; }
+      p { margin: 5px 0 0 0; font-size: 12px; opacity: 0.6; }
+    }
+  }
+
+  /* 装饰背景圆 */
+  .circle {
     position: absolute;
     border-radius: 50%;
-    filter: blur(60px);
+    filter: blur(80px);
+    opacity: 0.4;
   }
-  .c1 { width: 300px; height: 300px; background: #00eaff; opacity: 0.2; top: -50px; left: -50px; }
-  .c2 { width: 400px; height: 400px; background: #409eff; opacity: 0.2; bottom: -100px; right: -100px; }
+  .c1 { width: 300px; height: 300px; background: #00eaff; top: -50px; left: -50px; }
+  .c2 { width: 400px; height: 400px; background: #409eff; bottom: -100px; right: -100px; }
 }
 
-// 右侧样式
+/* 右侧表单样式 */
 .login-right {
-  flex: 1;
-  background: #fff;
+  width: 500px;
   display: flex;
   align-items: center;
   justify-content: center;
+  background-color: #fff;
 
   .form-wrapper {
-    width: 380px;
-    padding: 40px;
-    h2 { font-size: 26px; color: #333; margin-bottom: 5px; font-weight: bold; }
-    .tip { color: #999; margin-bottom: 30px; font-size: 14px; }
+    width: 360px;
+  }
 
-    .code-box {
-      display: flex;
-      gap: 12px;
-      width: 100%;
-      .code-img { height: 40px; cursor: pointer; border: 1px solid #dcdfe6; border-radius: 4px; }
-    }
+  .form-header {
+    margin-bottom: 40px;
+    h2 { font-size: 28px; color: #333; margin-bottom: 10px; font-weight: bold; }
+    p { color: #999; font-size: 14px; }
+  }
 
-    .submit-btn {
-      width: 100%;
-      height: 44px;
-      font-size: 16px;
-      margin-top: 10px;
-      letter-spacing: 2px;
-    }
+  .code-layout {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+    .code-img { height: 40px; cursor: pointer; border: 1px solid #dcdfe6; border-radius: 4px; }
+  }
+
+  .submit-btn {
+    width: 100%;
+    height: 44px;
+    font-size: 16px;
+    margin-top: 10px;
+    letter-spacing: 2px;
+  }
+
+  .form-footer {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 12px;
+    color: #ccc;
   }
 }
 
 @media (max-width: 900px) {
   .login-left { display: none; }
-  .login-right { flex: 1; }
+  .login-right { width: 100%; }
 }
 </style>

@@ -5,7 +5,7 @@ import { registerNavigationGuard } from "./guard"
 
 const Layout = () => import("@/layouts/index.vue")
 
-/** 常驻路由 (所有用户可见) */
+/** 常驻路由 */
 export const constantRoutes: RouteRecordRaw[] = [
   {
     path: "/redirect",
@@ -45,29 +45,36 @@ export const constantRoutes: RouteRecordRaw[] = [
         name: "Dashboard",
         meta: {
           title: "数据大屏",
+          // 尝试多种字段以匹配你的侧边栏组件逻辑
+          icon: "DataBoard",
+          elIcon: "DataBoard",
           svgIcon: "dashboard",
           affix: true
         }
       }
     ]
   },
-  // === 核心业务菜单 ===
+  // === 核心业务功能路由 ===
   {
     path: "/patient",
     component: Layout,
     redirect: "/patient/index",
-    // 添加 alwaysShow: true 确保即使只有一个子路由也能作为父级显示（可选）
     meta: {
-      title: "信息采集",
-      svgIcon: "search", // 确保你在 icons 目录有这个svg，或者换成 elIcon: 'Edit'
-      elIcon: "Edit"
+      title: "患者采集",
+      icon: "Edit",
+      elIcon: "Edit",
+      svgIcon: "form"
     },
     children: [
       {
         path: "index",
         component: () => import("@/pages/patient/index.vue"),
         name: "PatientCollect",
-        meta: { title: "患者录入" }
+        meta: {
+          title: "信息录入",
+          icon: "Edit",
+          elIcon: "Edit"
+        }
       }
     ]
   },
@@ -77,15 +84,20 @@ export const constantRoutes: RouteRecordRaw[] = [
     redirect: "/diagnosis/index",
     meta: {
       title: "辅助诊断",
-      svgIcon: "dashboard",
-      elIcon: "Monitor"
+      icon: "Monitor",
+      elIcon: "Monitor",
+      svgIcon: "example"
     },
     children: [
       {
         path: "index",
         component: () => import("@/pages/diagnosis/index.vue"),
-        name: "DiagnosisWorkplace",
-        meta: { title: "AI 诊断台" }
+        name: "AIDiagnosis",
+        meta: {
+          title: "AI 诊断台",
+          icon: "MagicStick",
+          elIcon: "MagicStick"
+        }
       }
     ]
   },
@@ -95,14 +107,20 @@ export const constantRoutes: RouteRecordRaw[] = [
     redirect: "/history/index",
     meta: {
       title: "病历档案",
-      elIcon: "Document"
+      icon: "Document",
+      elIcon: "Document",
+      svgIcon: "documentation"
     },
     children: [
       {
         path: "index",
         component: () => import("@/pages/history/index.vue"),
-        name: "HistoryArchive",
-        meta: { title: "档案查询" }
+        name: "History",
+        meta: {
+          title: "历史记录",
+          icon: "Collection",
+          elIcon: "Collection"
+        }
       }
     ]
   }
@@ -115,6 +133,7 @@ export const router = createRouter({
   routes: routerConfig.thirdLevelRouteCache ? flatMultiLevelRoutes(constantRoutes) : constantRoutes
 })
 
+/** 重置路由 */
 export function resetRouter() {
   try {
     router.getRoutes().forEach((route) => {
