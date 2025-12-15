@@ -1,26 +1,26 @@
 <script lang="ts" setup>
-import logoText1 from "@@/assets/images/layouts/logo-text-1.png?url"
-import logoText2 from "@@/assets/images/layouts/logo-text-2.png?url"
-import logo from "@@/assets/images/layouts/logo.png?url"
 import { useLayoutMode } from "@@/composables/useLayoutMode"
+import { View } from "@element-plus/icons-vue" // 引入一个像眼睛的图标
 
 interface Props {
   collapse?: boolean
 }
 
 const { collapse = true } = defineProps<Props>()
-
 const { isLeft, isTop } = useLayoutMode()
+
+const title = "智慧眼科"
 </script>
 
 <template>
   <div class="layout-logo-container" :class="{ 'collapse': collapse, 'layout-mode-top': isTop }">
     <transition name="layout-logo-fade">
       <router-link v-if="collapse" key="collapse" to="/">
-        <img :src="logo" class="layout-logo">
+        <el-icon color="#409eff" size="24" class="logo-icon"><View /></el-icon>
       </router-link>
-      <router-link v-else key="expand" to="/">
-        <img :src="!isLeft ? logoText2 : logoText1" class="layout-logo-text">
+      <router-link v-else key="expand" to="/" class="expand-link">
+        <el-icon color="#409eff" size="24" class="logo-icon"><View /></el-icon>
+        <span class="logo-text">{{ title }}</span>
       </router-link>
     </transition>
   </div>
@@ -34,13 +34,7 @@ const { isLeft, isTop } = useLayoutMode()
   line-height: var(--v3-header-height);
   text-align: center;
   overflow: hidden;
-  .layout-logo {
-    display: none;
-  }
-  .layout-logo-text {
-    height: 100%;
-    vertical-align: middle;
-  }
+  background-color: transparent;
 }
 
 .layout-mode-top {
@@ -48,14 +42,29 @@ const { isLeft, isTop } = useLayoutMode()
   line-height: var(--v3-navigationbar-height);
 }
 
+.logo-icon {
+  vertical-align: middle;
+  margin-right: 0;
+}
+
+.expand-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-decoration: none;
+}
+
+.logo-text {
+  margin-left: 10px;
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--v3-sidebar-menu-text-color); // 跟随侧边栏文字颜色
+  white-space: nowrap;
+}
+
 .collapse {
-  .layout-logo {
-    width: 32px;
-    height: 32px;
-    vertical-align: middle;
-    display: inline-block;
-  }
-  .layout-logo-text {
+  .logo-text {
     display: none;
   }
 }

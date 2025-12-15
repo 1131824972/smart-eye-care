@@ -1,8 +1,5 @@
 <script lang="ts" setup>
-import Notify from "@@/components/Notify/index.vue"
 import Screenfull from "@@/components/Screenfull/index.vue"
-import SearchMenu from "@@/components/SearchMenu/index.vue"
-import ThemeSwitch from "@@/components/ThemeSwitch/index.vue"
 import { useDevice } from "@@/composables/useDevice"
 import { useLayoutMode } from "@@/composables/useLayoutMode"
 import { UserFilled } from "@element-plus/icons-vue"
@@ -12,18 +9,13 @@ import { useUserStore } from "@/pinia/stores/user"
 import { Breadcrumb, Hamburger, Sidebar } from "../index"
 
 const { isMobile } = useDevice()
-
 const { isTop } = useLayoutMode()
-
 const router = useRouter()
-
 const appStore = useAppStore()
-
 const userStore = useUserStore()
-
 const settingsStore = useSettingsStore()
 
-const { showNotify, showThemeSwitch, showScreenfull, showSearchMenu } = storeToRefs(settingsStore)
+const { showScreenfull } = storeToRefs(settingsStore)
 
 /** 切换侧边栏 */
 function toggleSidebar() {
@@ -47,24 +39,21 @@ function logout() {
     />
     <Breadcrumb v-if="!isTop || isMobile" class="breadcrumb" />
     <Sidebar v-if="isTop && !isMobile" class="sidebar" />
+
     <div class="right-menu">
-      <SearchMenu v-if="showSearchMenu" class="right-menu-item" />
+      <!-- 仅保留全屏按钮，移除其他干扰项 -->
       <Screenfull v-if="showScreenfull" class="right-menu-item" />
-      <ThemeSwitch v-if="showThemeSwitch" class="right-menu-item" />
-      <Notify v-if="showNotify" class="right-menu-item" />
+
       <el-dropdown>
         <div class="right-menu-item user">
-          <el-avatar :icon="UserFilled" :size="30" />
-          <span>{{ userStore.username }}</span>
+          <el-avatar :icon="UserFilled" :size="30" style="background-color: #409eff;" />
+          <span style="margin-left: 8px;">{{ userStore.username }} 医生</span>
         </div>
         <template #dropdown>
           <el-dropdown-menu>
-            <a target="_blank" href="https://github.com/un-pany/v3-admin-vite">
-              <el-dropdown-item>GitHub</el-dropdown-item>
-            </a>
-            <a target="_blank" href="https://gitee.com/un-pany/v3-admin-vite">
-              <el-dropdown-item>Gitee</el-dropdown-item>
-            </a>
+            <el-dropdown-item @click="router.push('/')">
+              返回首页
+            </el-dropdown-item>
             <el-dropdown-item divided @click="logout">
               退出登录
             </el-dropdown-item>
@@ -82,6 +71,7 @@ function logout() {
   color: var(--v3-navigationbar-text-color);
   display: flex;
   justify-content: space-between;
+  background-color: #fff; // 确保背景干净
   .hamburger {
     display: flex;
     align-items: center;
@@ -91,14 +81,12 @@ function logout() {
   }
   .breadcrumb {
     flex: 1;
-    // 参考 Bootstrap 的响应式设计将宽度设置为 576
     @media screen and (max-width: 576px) {
       display: none;
     }
   }
   .sidebar {
     flex: 1;
-    // 设置 min-width 是为了让 Sidebar 里的 el-menu 宽度自适应
     min-width: 0px;
     :deep(.el-menu) {
       background-color: transparent;
@@ -126,11 +114,8 @@ function logout() {
     .user {
       display: flex;
       align-items: center;
-      .el-avatar {
-        margin-right: 10px;
-      }
       span {
-        font-size: 16px;
+        font-size: 14px;
       }
     }
   }
