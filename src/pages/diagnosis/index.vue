@@ -1,459 +1,322 @@
-<script setup lang="ts">
-import { ref, onMounted, reactive, nextTick } from 'vue'
-import KnowledgeGraph from '@/components/KnowledgeGraph.vue'
-import YunnanMap from '@/components/YunnanMap.vue'
-import * as echarts from 'echarts'
-import { MagicStick, ChatDotRound, Picture, Location, User, ArrowRight, Share, MapLocation, Download, Printer, TrendCharts, List } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+<script lang="ts" setup>
+import { ref, onMounted, reactive } from "vue"
+import KnowledgeGraph from "@/components/KnowledgeGraph.vue"
+import AiAssistant from "./components/AiAssistant.vue"
+import { ElLoading, ElMessage } from "element-plus"
+import {
+  CircleCheckFilled, VideoPlay, DataAnalysis, Warning, Cpu,
+  Document, Download, Printer
+} from "@element-plus/icons-vue"
 
-// === 1. 引入 5 张核心演示图片 ===
-// 确保这些图片真实存在于 src/common/assets/images/ 下
-import fundusOriginal from '@/common/assets/images/fundus-original.jpg'
-import fundusMask from '@/common/assets/images/fundus-mask.jpg'
-import tearImg from '@/common/assets/images/tear.jpg'
-import meiboImg from '@/common/assets/images/meibo.jpg'
-import corneaImg from '@/common/assets/images/cornea.jpg'
+// 状态控制
+const showAiDrawer = ref(false)
+const showReportModal = ref(false)
+const loading = ref(true)
+const loadingText = ref("初始化分析引擎...")
 
-// 状态管理
-const activeRightTab = ref('graph')
-const activeLeftTab = ref('vision')
-const imageMode = ref('split') // 影像模式：split(并列), overlay(叠加)
-const maskOpacity = ref(80) // 叠加透明度
-const aiAnalysisLoading = ref(false)
-const aiReport = ref('')
-const showReportDialog = ref(false)
-const patient = ref<any>(null)
-const trendChartRef = ref<HTMLElement | null>(null)
-let trendChartInstance: echarts.ECharts | null = null
+// 模拟数据
+const result = reactive({
+  diagnosis: "混合型干眼症 (MGD + 泪液缺乏)",
+  severity: "中度",
+  confidence: 94.2,
+  osdiScore: 0,
+  patientName: "张三",
+  patientId: "P2023001",
+  date: new Date().toLocaleDateString()
+})
 
-// 医嘱清单
-const treatments = reactive([
-  { name: 'IPL 强脉冲光治疗 (3次/疗程)', checked: true },
-  { name: '视网膜激光光凝术', checked: false },
-  { name: '玻璃酸钠滴眼液 (4次/日)', checked: true },
-  { name: '佩戴湿房镜 (高海拔防护)', checked: true }
-])
-
-// 模拟患者数据
-const mockPatientData = {
-  name: '石丽琴',
-  age: 53,
-  gender: '女',
-  region: '昆明市',
-  id: '20250416688010',
-  image: fundusOriginal,     // 主图-原图
-  maskImage: fundusMask,     // 主图-分割结果
-  examImages: {              // 其他检查影像
-    tear: tearImg,
-    meibo: meiboImg,
-    cornea: corneaImg
-  }
-}
-
-// 初始化趋势图 (增加防错逻辑)
-const initTrendChart = async () => {
-  await nextTick() // 等待 DOM 更新
-  if (!trendChartRef.value) return
-
-  // 如果容器高度为0，不初始化，防止报错
-  if (trendChartRef.value.clientHeight === 0) {
-    // 尝试延时再次初始化
-    setTimeout(initTrendChart, 500)
-    return
-  }
-
-  if (trendChartInstance) {
-    trendChartInstance.dispose()
-  }
-
-  trendChartInstance = echarts.init(trendChartRef.value)
-  trendChartInstance.setOption({
-    title: { text: '病情风险趋势', left: 'center', textStyle: { fontSize: 14 } },
-    tooltip: { trigger: 'axis' },
-    legend: { data: ['血管密度', '风险指数'], bottom: 0 },
-    grid: { top: 40, bottom: 30, left: 40, right: 40 },
-    xAxis: { type: 'category', data: ['2024-10', '2025-01', '2025-04'] },
-    yAxis: [
-      { type: 'value', name: '密度' },
-      { type: 'value', name: '指数', min: 0, max: 100 }
-    ],
-    series: [
-      { name: '血管密度', type: 'line', data: [0.45, 0.42, 0.38], smooth: true, itemStyle: { color: '#409EFF' } },
-      { name: '风险指数', type: 'line', yAxisIndex: 1, data: [40, 55, 78], smooth: true, itemStyle: { color: '#F56C6C' } }
-    ]
-  })
-}
-
-// 生成 AI 报告
-const generateAIReport = () => {
-  if (aiAnalysisLoading.value) return
-  aiAnalysisLoading.value = true
-  aiReport.value = ''
-
-  const mockText = `**【AI 多模态智能诊断报告】**
-
-**1. U-KAN 眼底影像分析**：
-   - **血管分割**: 成功提取视网膜血管网络，血管密度 (VD) 降低至 0.38。
-   - **微循环评估**: 末梢血管迂曲，提示高血压性视网膜病变 I 期风险。
-
-**2. 眼表综合检查所见**:
-   - **睑板腺**: 红外成像显示下睑腺体缺失率约 30%，腺管扭曲。
-   - **泪河高度**: 中央 TMH 约 0.21mm，泪液分泌量不足。
-   - **角膜情况**: 荧光染色可见下方点状着色 (Grade 1)。
-
-**3. 环境与病因归因**:
-   - 患者常驻昆明 (海拔1890m)，低气压环境加剧缺氧。
-   - 知识图谱推理：[高海拔缺氧] + [年龄>50] -> [微循环障碍] + [泪液蒸发] -> [混合型干眼]。
-
-**4. 风险预警**:
-   - 综合风险指数：**78/100 (高风险)**。`
-
+const startAnalysis = () => {
+  const steps = [
+    "正在加载 KAN 神经网络...",
+    "加载 UNET 分割权重...",
+    "处理眼底与睑板腺影像...",
+    "关联云南地理知识图谱...",
+    "生成多模态诊断结论..."
+  ]
   let i = 0
-  const timer = setInterval(() => {
-    aiReport.value += mockText[i]
+  const interval = setInterval(() => {
+    loadingText.value = steps[i]
     i++
-    if (i >= mockText.length) {
-      clearInterval(timer)
-      aiAnalysisLoading.value = false
-      ElMessage.success('AI 分析报告生成完毕')
+    if (i >= steps.length) {
+      clearInterval(interval)
+      setTimeout(() => { loading.value = false }, 800)
     }
-  }, 15)
+  }, 800)
 }
 
-const openReport = () => {
-  if (!aiReport.value) {
-    ElMessage.warning('请先生成 AI 分析报告')
-    return
-  }
-  showReportDialog.value = true
+const handlePreviewReport = () => {
+  const loadingInstance = ElLoading.service({ text: '正在生成详细医学报告...', target: '.console-container' })
+  setTimeout(() => {
+    loadingInstance.close()
+    showReportModal.value = true
+  }, 1000)
 }
 
-const handleExportPDF = () => {
-  ElMessage.success('电子报告 PDF 下载任务已提交')
-  showReportDialog.value = false
-}
-
-// 监听 Tab 切换，重新渲染图表
-const handleTabChange = (name: string) => {
-  if (name === 'trend') {
-    setTimeout(initTrendChart, 200)
-  }
+const handleDownload = () => {
+  ElMessage.success("PDF 报告下载任务已加入队列")
 }
 
 onMounted(() => {
-  patient.value = mockPatientData
-  // 确保 DOM 渲染后再初始化图表
-  setTimeout(initTrendChart, 1000)
-  window.addEventListener('resize', () => trendChartInstance?.resize())
+  const data = localStorage.getItem('currentPatientData')
+  if (data) {
+    const p = JSON.parse(data)
+    result.patientName = p.base.name
+    result.patientId = p.base.id
+    result.osdiScore = p.osdiScore
+  }
+  startAnalysis()
 })
 </script>
 
 <template>
-  <div class="diag-container">
-    <!-- 顶部状态栏 -->
-    <div class="status-header">
-      <div class="patient-card" v-if="patient">
-        <el-avatar :size="56" class="avatar-box">{{ patient.name?.[0] }}</el-avatar>
-        <div class="info">
-          <div class="name-row">
-            <span class="name">{{ patient.name }}</span>
-            <el-tag type="danger" effect="dark" round class="risk-tag">高风险 (High Risk)</el-tag>
-            <span class="id-text">ID: {{ patient.id }}</span>
-          </div>
-          <div class="meta">
-            <span><el-icon><User /></el-icon> {{ patient.gender }} · {{ patient.age }}岁</span>
-            <el-divider direction="vertical" />
-            <span><el-icon><Location /></el-icon> {{ patient.region }}</span>
-          </div>
-        </div>
-      </div>
+  <div class="console-container">
 
-      <div class="header-actions">
-        <el-button type="primary" size="large" :icon="ChatDotRound" @click="generateAIReport" :loading="aiAnalysisLoading" class="ai-btn">
-          {{ aiAnalysisLoading ? 'AI 正在推理...' : '生成智能诊断' }}
-        </el-button>
-        <el-button type="success" size="large" :icon="Download" @click="openReport" :disabled="!aiReport" plain>
-          导出报告
-        </el-button>
+    <!-- Loading Mask -->
+    <div v-if="loading" class="loading-mask">
+      <div class="loader-content">
+        <div class="scan-circle"></div>
+        <h2 class="mt-4 text-white font-mono text-xl">{{ loadingText }}</h2>
       </div>
     </div>
 
-    <el-row :gutter="20" class="main-content">
-      <!-- 左侧：微观诊疗 -->
-      <el-col :span="10" class="left-col">
-        <el-card shadow="hover" class="panel-card fit-top">
-          <el-tabs v-model="activeLeftTab" class="left-tabs" @tab-change="handleTabChange">
+    <!-- Dashboard Content -->
+    <div v-else class="dashboard animate-in">
 
-            <!-- Tab 1: 视觉分析 -->
-            <el-tab-pane name="vision">
-              <template #label><span class="tab-txt"><el-icon><MagicStick /></el-icon> U-KAN 视觉分析</span></template>
-
-              <div class="tool-bar">
-                <el-radio-group v-model="imageMode" size="small">
-                  <el-radio-button label="split">并列对比</el-radio-button>
-                  <el-radio-button label="overlay">智能叠加</el-radio-button>
-                </el-radio-group>
-                <div class="slider-box" v-if="imageMode === 'overlay'">
-                  <span class="label">Mask透明度</span>
-                  <el-slider v-model="maskOpacity" :min="0" :max="100" size="small" style="width: 100px" />
-                </div>
-              </div>
-
-              <div class="vision-viewport">
-                <!-- 模式A：并列显示 -->
-                <div v-if="imageMode === 'split'" class="split-view">
-                  <div class="img-box">
-                    <img :src="patient?.image" />
-                    <span class="badge">眼底原图</span>
-                  </div>
-                  <div class="img-box">
-                    <img :src="patient?.maskImage" class="mask-display" />
-                    <span class="badge ai">血管分割</span>
-                  </div>
-                </div>
-
-                <!-- 模式B：叠加显示 -->
-                <div v-else class="overlay-view">
-                  <div class="img-stack">
-                    <img :src="patient?.image" class="base-img" />
-                    <img
-                      :src="patient?.maskImage"
-                      class="mask-img"
-                      :style="{
-                        opacity: maskOpacity / 100,
-                        mixBlendMode: 'screen',
-                        filter: 'sepia(1) saturate(5) hue-rotate(90deg)'
-                      }"
-                    />
-                    <span class="badge ai">AI Overlay Mode</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- 核心指标 -->
-              <div class="metrics-row">
-                <div class="m-item">
-                  <div class="k">血管密度</div>
-                  <div class="v danger">0.38</div>
-                </div>
-                <div class="m-item">
-                  <div class="k">分形维数</div>
-                  <div class="v">1.42</div>
-                </div>
-                <div class="m-item">
-                  <div class="k">模型置信度</div>
-                  <div class="v success">98.2%</div>
-                </div>
-              </div>
-            </el-tab-pane>
-
-            <!-- Tab 2: 历史趋势 -->
-            <el-tab-pane name="trend">
-              <template #label><span class="tab-txt"><el-icon><TrendCharts /></el-icon> 历史趋势</span></template>
-              <div class="chart-box" ref="trendChartRef" style="height: 300px; width: 100%;"></div>
-            </el-tab-pane>
-          </el-tabs>
-        </el-card>
-
-        <!-- 下方：AI 结论 -->
-        <el-card shadow="hover" class="panel-card fit-bottom">
-          <template #header>
-            <div class="card-head ai-header">
-              <div class="title"><el-icon class="icon-ai"><ChatDotRound /></el-icon> <span>智能诊疗建议</span></div>
-              <div class="model-tag">EyePCR-v2</div>
-            </div>
-          </template>
-          <div class="ai-body" v-loading="aiAnalysisLoading">
-            <div v-if="aiReport">
-              <div class="report-text">{{ aiReport.replace(/\*\*/g, '') }}</div>
-              <el-divider style="margin: 15px 0" />
-              <div class="treatment-list">
-                <div class="list-title"><el-icon><List /></el-icon> 推荐方案 (可编辑)</div>
-                <el-checkbox v-for="(t, i) in treatments" :key="i" v-model="t.checked" class="t-item">
-                  {{ t.name }}
-                </el-checkbox>
-              </div>
-            </div>
-            <div v-else class="empty-ai">
-              <el-icon size="40" color="#E4E7ED"><MagicStick /></el-icon>
-              <p>请点击顶部按钮开始分析</p>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-
-      <!-- 右侧：宏观分析 -->
-      <el-col :span="14" class="right-col">
-        <el-card shadow="hover" class="panel-card fit-height">
-          <el-tabs v-model="activeRightTab" class="custom-tabs">
-            <el-tab-pane name="graph">
-              <template #label><span class="tab-label"><el-icon><Share /></el-icon> 病因图谱</span></template>
-              <div class="chart-wrapper"><KnowledgeGraph /></div>
-            </el-tab-pane>
-            <el-tab-pane name="map">
-              <template #label><span class="tab-label"><el-icon><MapLocation /></el-icon> 区域态势</span></template>
-              <div class="chart-wrapper"><YunnanMap /></div>
-            </el-tab-pane>
-          </el-tabs>
-        </el-card>
-      </el-col>
-    </el-row>
-
-    <!-- 电子报告预览弹窗 (完整展示5张图) -->
-    <el-dialog v-model="showReportDialog" title="电子诊断报告预览" width="960px" top="5vh">
-      <div class="report-paper">
-        <div class="report-header">
-          <h2>云南大学附属医院眼表综合检查报告</h2>
-          <div class="report-meta"><span>ID: {{ patient?.id }}</span><span>日期: 2025-04-16</span></div>
+      <!-- Header -->
+      <div class="flex justify-between items-center mb-6">
+        <div>
+           <h1 class="text-2xl font-bold text-gray-800 dark:text-white flex items-center">
+             <el-icon class="mr-2 text-primary"><Cpu /></el-icon> AI 智能诊断控制台
+           </h1>
+           <p class="text-gray-500 mt-1 flex gap-4 text-sm">
+             <span>患者: <b>{{ result.patientName }}</b></span>
+             <span>ID: {{ result.patientId }}</span>
+             <span>OSDI: <b class="text-orange-500">{{ result.osdiScore }}</b></span>
+           </p>
         </div>
-        <el-divider />
+        <el-button type="primary" size="large" @click="showAiDrawer = true" class="shadow-lg hover:scale-105 transition-transform">
+          <el-icon class="mr-2"><VideoPlay /></el-icon> 唤起 AI 医患助手
+        </el-button>
+      </div>
 
-        <!-- 第一部分：眼底 AI 分析 -->
-        <div class="report-section">
-          <h4>【U-KAN 眼底影像分析】</h4>
-          <div class="report-images-full">
-             <div class="img-row">
-               <div class="col">
-                 <img :src="patient?.image" />
-                 <span class="cap">原始眼底影像</span>
+      <el-row :gutter="20">
+        <!-- LEFT: AI Model Analysis (Original vs Mask) -->
+        <el-col :span="10">
+          <el-card class="mb-5 border-none shadow-md" body-style="padding:0">
+            <template #header>
+              <div class="flex justify-between items-center">
+                <span class="font-bold flex items-center"><el-icon class="mr-2"><DataAnalysis /></el-icon> KAN+UNET 影像分割结果</span>
+                <el-tag effect="dark" size="small">Model Output</el-tag>
+              </div>
+            </template>
+
+            <!-- 图像对比区域：使用 Grid + aspect-ratio -->
+            <div class="comparison-grid p-4 bg-gray-900">
+               <div class="grid grid-cols-2 gap-3">
+                 <!-- 原图 -->
+                 <div class="relative rounded-lg overflow-hidden border border-gray-700 aspect-[4/3] group cursor-zoom-in">
+                   <img src="@/common/assets/images/fundus-original.jpg" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                   <div class="absolute bottom-0 left-0 right-0 p-1 bg-black/60 text-center text-xs text-gray-300">原始影像 (Original)</div>
+                 </div>
+                 <!-- 分割图 -->
+                 <div class="relative rounded-lg overflow-hidden border border-gray-700 aspect-[4/3] group cursor-zoom-in">
+                   <img src="@/common/assets/images/fundus-mask.jpg" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                   <div class="absolute inset-0 bg-green-500/20 mix-blend-overlay"></div> <!-- 绿色高亮叠加 -->
+                   <div class="absolute bottom-0 left-0 right-0 p-1 bg-black/60 text-center text-xs text-green-400">UNET 分割 (Mask)</div>
+                 </div>
                </div>
-               <div class="col">
-                 <img :src="patient?.maskImage" class="mask-print" />
-                 <span class="cap">AI 血管分割结果</span>
+            </div>
+
+            <div class="p-4 bg-white dark:bg-gray-800">
+              <div class="flex justify-between text-sm mb-2">
+                <span>病灶分割 IoU (交并比)</span>
+                <span class="font-bold text-green-500">0.892</span>
+              </div>
+              <el-progress :percentage="89.2" :show-text="false" status="success" class="mb-4"/>
+
+              <div class="flex justify-between text-sm mb-2">
+                <span>KAN 分类置信度</span>
+                <span class="font-bold text-blue-500">94.2%</span>
+              </div>
+              <el-progress :percentage="94.2" :show-text="false" />
+            </div>
+          </el-card>
+
+          <!-- Risk Factors -->
+          <el-card class="border-none shadow-md">
+            <template #header><span class="font-bold">高风险因子识别</span></template>
+            <div class="space-y-3">
+              <div class="risk-item bg-red-50 border-red-500">
+                <el-icon class="text-red-500"><Warning /></el-icon>
+                <div class="ml-3">
+                  <div class="font-bold text-gray-700">睑板腺严重缺失</div>
+                  <div class="text-xs text-gray-500">AI 测算缺失率: 32.5%</div>
+                </div>
+              </div>
+              <div class="risk-item bg-orange-50 border-orange-500">
+                <el-icon class="text-orange-500"><Warning /></el-icon>
+                <div class="ml-3">
+                  <div class="font-bold text-gray-700">泪膜破裂时间短</div>
+                  <div class="text-xs text-gray-500">BUT: 3.2s (正常 > 10s)</div>
+                </div>
+              </div>
+            </div>
+          </el-card>
+        </el-col>
+
+        <!-- RIGHT: KG & Report -->
+        <el-col :span="14">
+          <!-- Knowledge Graph (高度已增加) -->
+          <el-card class="mb-5 border-none shadow-md" body-style="padding:0">
+            <template #header>
+              <div class="flex justify-between items-center">
+                 <span class="font-bold">云南干眼症地理知识图谱</span>
+                 <span class="text-xs text-gray-400">Geographical Reasoning</span>
+              </div>
+            </template>
+            <!-- 修改这里: 增加高度到 h-[500px] -->
+            <div class="h-[500px] min-h-[500px] bg-slate-50 relative overflow-hidden">
+               <KnowledgeGraph />
+               <div class="absolute top-2 right-2 bg-white/90 p-2 rounded shadow text-xs z-10 border">
+                 <b>推理路径:</b> 高海拔 -> 紫外线 -> 炎症 -> 干眼
                </div>
+            </div>
+          </el-card>
+
+          <!-- Diagnosis Conclusion & Report Button -->
+          <el-card class="result-card bg-gradient-to-r from-blue-600 to-indigo-700 text-white border-none shadow-xl">
+             <div class="flex flex-col h-full">
+               <div class="flex items-start mb-4">
+                 <el-icon class="text-4xl mr-3 mt-1"><CircleCheckFilled /></el-icon>
+                 <div>
+                   <div class="opacity-80 text-xs uppercase tracking-wider">AI Conclusion</div>
+                   <h2 class="text-2xl font-bold">{{ result.diagnosis }}</h2>
+                 </div>
+               </div>
+
+               <p class="text-sm opacity-90 leading-relaxed mb-6 flex-1">
+                 建议进行睑板腺物理治疗，配合人工泪液。请结合右侧详细报告中的各项指标进行最终确诊。
+               </p>
+
+               <el-button type="success" :icon="Document" @click="handlePreviewReport" class="w-full font-bold">
+                 生成并预览详细诊断报告
+               </el-button>
+             </div>
+          </el-card>
+        </el-col>
+      </el-row>
+    </div>
+
+    <!-- AI Assistant Drawer -->
+    <el-drawer v-model="showAiDrawer" title="AI 智能医患助手" size="380px" destroy-on-close>
+      <AiAssistant :patient-name="result.patientName" :diagnosis="result.diagnosis" />
+    </el-drawer>
+
+    <!-- 详细报告预览模态框 -->
+    <el-dialog v-model="showReportModal" title="详细诊断报告预览" width="800px" top="5vh" class="report-modal">
+      <div class="report-paper bg-white p-8 text-gray-800" id="print-area">
+        <!-- 报告头 -->
+        <div class="text-center border-b-2 border-gray-800 pb-4 mb-6">
+          <h1 class="text-2xl font-bold">Smart Eye Care 智能干眼症诊断报告单</h1>
+          <p class="text-sm text-gray-500 mt-1">AI-Assisted Ocular Surface Analysis Report</p>
+        </div>
+
+        <!-- 患者信息 -->
+        <div class="grid grid-cols-3 gap-4 mb-6 text-sm">
+          <div><b>姓名:</b> {{ result.patientName }}</div>
+          <div><b>ID:</b> {{ result.patientId }}</div>
+          <div><b>诊断日期:</b> {{ result.date }}</div>
+          <div><b>性别:</b> 男</div>
+          <div><b>年龄:</b> 25岁</div>
+          <div><b>检查科室:</b> 眼表疾病科</div>
+        </div>
+
+        <!-- 详细影像展示 (重点展示区) -->
+        <div class="mb-6">
+          <h3 class="font-bold border-l-4 border-blue-600 pl-2 mb-3">I. 多模态影像分析 (Multimodal Imaging)</h3>
+          <!-- 这里也使用 aspect-ratio 确保打印/预览时不走样 -->
+          <div class="grid grid-cols-4 gap-2">
+             <!-- 1. 睑板腺 -->
+             <div class="border rounded p-1">
+               <div class="aspect-square bg-black overflow-hidden relative">
+                  <img src="@/common/assets/images/meibo.jpg" class="w-full h-full object-contain" />
+               </div>
+               <div class="text-[10px] text-center mt-1 font-bold">睑板腺 (Meibo)</div>
+               <div class="text-[10px] text-center text-red-500">缺失: 32%</div>
+             </div>
+             <!-- 2. 泪河 -->
+             <div class="border rounded p-1">
+               <div class="aspect-square bg-black overflow-hidden relative">
+                  <img src="@/common/assets/images/tear.jpg" class="w-full h-full object-contain" />
+               </div>
+               <div class="text-[10px] text-center mt-1 font-bold">泪河 (Tear)</div>
+               <div class="text-[10px] text-center text-orange-500">高度: 0.18mm</div>
+             </div>
+             <!-- 3. 角膜 -->
+             <div class="border rounded p-1">
+               <div class="aspect-square bg-black overflow-hidden relative">
+                  <img src="@/common/assets/images/cornea.jpg" class="w-full h-full object-contain" />
+               </div>
+               <div class="text-[10px] text-center mt-1 font-bold">角膜 (Cornea)</div>
+               <div class="text-[10px] text-center">荧光素染色 (+)</div>
+             </div>
+             <!-- 4. AI 分割 -->
+             <div class="border rounded p-1">
+               <div class="aspect-square bg-black overflow-hidden relative">
+                  <img src="@/common/assets/images/fundus-mask.jpg" class="w-full h-full object-contain" />
+               </div>
+               <div class="text-[10px] text-center mt-1 font-bold text-green-600">AI Mask</div>
+               <div class="text-[10px] text-center">IoU: 0.89</div>
              </div>
           </div>
         </div>
 
-        <!-- 第二部分：眼表三联检查 -->
-        <div class="report-section">
-          <h4>【眼表综合检查影像】</h4>
-          <div class="report-images-grid">
-             <div class="grid-item">
-                <img :src="patient?.examImages?.meibo" />
-                <span>1. 睑板腺成像 (Meibo)</span>
-             </div>
-             <div class="grid-item">
-                <img :src="patient?.examImages?.tear" />
-                <span>2. 泪河高度 (Tear)</span>
-             </div>
-             <div class="grid-item">
-                <img :src="patient?.examImages?.cornea" />
-                <span>3. 角膜染色 (Cornea)</span>
-             </div>
-          </div>
+        <!-- 数据指标 -->
+        <div class="mb-6">
+          <h3 class="font-bold border-l-4 border-blue-600 pl-2 mb-3">II. 关键定量指标 (Quantitative Metrics)</h3>
+          <table class="w-full text-sm text-left border-collapse border border-gray-200">
+            <tr class="bg-gray-100"><th class="p-2 border">检查项目</th><th class="p-2 border">结果</th><th class="p-2 border">参考范围</th><th class="p-2 border">判定</th></tr>
+            <tr><td class="p-2 border">OSDI 评分</td><td class="p-2 border font-bold">{{ result.osdiScore }}</td><td class="p-2 border"><12</td><td class="p-2 border text-red-500">异常</td></tr>
+            <tr><td class="p-2 border">非侵入式 BUT</td><td class="p-2 border">3.5 秒</td><td class="p-2 border">>10 秒</td><td class="p-2 border text-red-500">异常</td></tr>
+            <tr><td class="p-2 border">泪河高度 (TMH)</td><td class="p-2 border">0.18 mm</td><td class="p-2 border">>0.20 mm</td><td class="p-2 border text-orange-500">临界</td></tr>
+          </table>
         </div>
 
-        <!-- 第三部分：结论 -->
-        <div class="report-section">
-          <h4>【AI 综合诊断意见】</h4>
-          <div class="report-text">{{ aiReport.replace(/\*\*/g, '') }}</div>
+        <!-- 结论 -->
+        <div class="bg-gray-50 p-4 rounded border border-gray-200">
+          <div class="font-bold mb-1">诊断结论:</div>
+          <div class="text-lg text-blue-800 font-bold mb-2">{{ result.diagnosis }}</div>
+          <div class="text-sm"><b>处理意见:</b> 建议进行睑板腺物理治疗（3个疗程），配合使用不含防腐剂的人工泪液。注意改善用眼环境，增加环境湿度。</div>
+        </div>
+
+        <!-- 医师签名 -->
+        <div class="mt-8 flex justify-end gap-12 text-sm">
+          <div>报告医生: <span class="font-script text-xl">Dr. AI</span></div>
+          <div>审核医生: ____________</div>
         </div>
       </div>
+
       <template #footer>
-        <el-button @click="showReportDialog = false">关闭</el-button>
-        <el-button type="primary" :icon="Printer" @click="handleExportPDF">打印报告</el-button>
+        <span class="dialog-footer">
+          <el-button @click="showReportModal = false">关闭</el-button>
+          <el-button type="primary" :icon="Download" @click="handleDownload">下载 PDF</el-button>
+          <el-button type="success" :icon="Printer">打印报告</el-button>
+        </span>
       </template>
     </el-dialog>
+
   </div>
 </template>
 
 <style scoped lang="scss">
-/* 基础布局 */
-.diag-container { padding: 20px; background-color: #f5f7fa; min-height: calc(100vh - 84px); display: flex; flex-direction: column; }
-.status-header { background: #fff; padding: 15px 25px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; box-shadow: 0 2px 12px rgba(0,0,0,0.05); }
+.console-container { min-height: calc(100vh - 100px); position: relative; }
+.loading-mask { position: absolute; inset: 0; background: #0f172a; z-index: 50; display: flex; align-items: center; justify-content: center; .scan-circle { width: 80px; height: 80px; border: 3px solid rgba(59, 130, 246, 0.3); border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s infinite linear; } }
+.risk-item { display: flex; align-items: center; padding: 10px; border-radius: 6px; border-left-width: 4px; }
+.animate-in { animation: fadeInUp 0.6s ease-out; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-/* 患者卡片 */
-.patient-card {
-  display: flex; align-items: center; gap: 16px;
-  .avatar-box { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; font-size: 20px; font-weight: bold; }
-  .info {
-    .name-row { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; .name { font-size: 20px; font-weight: 800; color: #333; } .id-text { font-size: 12px; color: #999; } }
-    .meta { font-size: 13px; color: #666; display: flex; align-items: center; gap: 10px; }
-  }
-}
-.header-actions { display: flex; gap: 10px; }
-
-/* 左右分栏 */
-.main-content { flex: 1; display: flex; }
-.left-col { display: flex; flex-direction: column; gap: 15px; height: 100%; }
-.right-col { height: 100%; }
-
-/* 卡片通用 */
-.panel-card { border-radius: 12px; border: none; display: flex; flex-direction: column; background: #fff; box-shadow: 0 2px 12px rgba(0,0,0,0.03); }
-.fit-top { min-height: 420px; margin-bottom: 15px; }
-.fit-bottom { flex: 1; min-height: 200px; }
-.fit-height { height: 100%; }
-
-/* Tab样式 */
-:deep(.el-tabs__header) { margin: 0; padding: 0 15px; border-bottom: 1px solid #f0f0f0; }
-:deep(.el-tabs__content) { padding: 15px; }
-.tab-txt { display: flex; align-items: center; gap: 5px; font-weight: 600; }
-
-/* 视觉分析区域 */
-.tool-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-.slider-box { display: flex; align-items: center; gap: 10px; .label { font-size: 12px; color: #666; } }
-
-.vision-viewport {
-  height: 240px; background: #000; border-radius: 8px; overflow: hidden; position: relative;
-
-  /* 并列模式 */
-  .split-view { display: flex; height: 100%; gap: 2px; }
-  .img-box { flex: 1; position: relative; overflow: hidden; img { width: 100%; height: 100%; object-fit: contain; } }
-
-  /* 叠加模式 */
-  .overlay-view { width: 100%; height: 100%; position: relative; display: flex; justify-content: center; }
-  .img-stack { position: relative; height: 100%; width: 100%; max-width: 400px; }
-  .base-img { width: 100%; height: 100%; object-fit: contain; display: block; }
-  .mask-img {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain;
-    transition: opacity 0.1s;
-  }
-
-  .badge { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.6); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 12px; z-index: 10; }
-  .badge.ai { background: #409EFF; }
-}
-
-/* 指标行 */
-.metrics-row {
-  display: flex; margin-top: 15px; gap: 10px;
-  .m-item {
-    flex: 1; background: #f8f9fa; padding: 8px; text-align: center; border-radius: 6px;
-    .k { font-size: 12px; color: #999; margin-bottom: 4px; }
-    .v { font-size: 18px; font-weight: bold; color: #333; }
-    .v.danger { color: #f56c6c; }
-    .v.success { color: #67c23a; }
-  }
-}
-
-/* AI 报告区 */
-.card-head { display: flex; justify-content: space-between; align-items: center; font-weight: bold; padding: 15px 20px; border-bottom: 1px solid #f0f2f5; }
-.ai-header { color: #722ED1; .model-tag { font-size: 12px; background: #f9f0ff; color: #722ed1; padding: 2px 6px; border-radius: 4px; } }
-.ai-body {
-  overflow-y: auto; height: 100%; font-size: 14px; line-height: 1.6; color: #333; padding: 15px;
-  .empty-ai { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #ccc; gap: 10px; }
-}
-.treatment-list {
-  .list-title { font-weight: bold; margin-bottom: 8px; display: flex; align-items: center; gap: 5px; color: #606266; }
-  .t-item { display: block; margin-bottom: 5px; margin-left: 0; }
-}
-
-/* 报告单 */
-.report-paper {
-  font-family: 'SimSun', serif; padding: 20px;
-  .report-header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px; }
-  .report-images-full {
-    .img-row { display: flex; gap: 20px; justify-content: center; img { width: 220px; height: 220px; object-fit: contain; border: 1px solid #000; background: #000; } .cap { display: block; text-align: center; font-size: 12px; margin-top: 5px; } }
-  }
-  .report-images-grid { display: flex; gap: 15px; margin-top: 10px; .grid-item { flex: 1; text-align: center; img { width: 100%; height: 150px; object-fit: cover; border: 1px solid #ccc; } span { font-size: 12px; font-weight: bold; display: block; margin-top: 5px; } } }
-  .report-text { white-space: pre-wrap; font-size: 14px; line-height: 1.8; }
-  .section-title { background: #eee; padding: 5px 10px; font-weight: bold; border-left: 4px solid #333; margin: 15px 0 10px; }
-}
-
-/* 趋势图 */
-.chart-box {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
+/* 报告样式 */
+.report-paper { box-shadow: 0 0 15px rgba(0,0,0,0.1); }
+.font-script { font-family: 'Brush Script MT', cursive; }
 </style>
