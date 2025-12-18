@@ -1,7 +1,4 @@
-import { type RouteRecordRaw, createRouter } from "vue-router"
-import { flatMultiLevelRoutes } from "./helper"
-import { routerConfig } from "./config"
-import { registerNavigationGuard } from "./guard"
+import { type RouteRecordRaw, createRouter, createWebHashHistory } from "vue-router"
 
 const Layout = () => import("@/layouts/index.vue")
 
@@ -34,117 +31,114 @@ export const constantRoutes: RouteRecordRaw[] = [
     component: () => import("@/pages/login/index.vue"),
     meta: { hidden: true }
   },
+
+  // --- 1. 医生工作台 (作为系统首页) ---
   {
     path: "/",
     component: Layout,
-    redirect: "/dashboard",
+    redirect: "/workbench",
     children: [
       {
-        path: "dashboard",
-        component: () => import("@/pages/dashboard/index.vue"),
-        name: "Dashboard",
+        path: "workbench",
+        component: () => import("@/pages/workbench/index.vue"),
+        name: "Workbench",
         meta: {
-          title: "数据大屏",
-          // 尝试多种字段以匹配你的侧边栏组件逻辑
-          icon: "DataBoard",
-          elIcon: "DataBoard",
-          svgIcon: "dashboard",
-          affix: true
+          title: "医生工作台",
+          svgIcon: "dashboard", // 使用 svgIcon 或 icon
+          affix: true      // 固定在 TagsView
         }
       }
     ]
   },
-  // === 核心业务功能路由 ===
+
+  // --- 2. 病人信息录入 ---
   {
     path: "/patient",
     component: Layout,
     redirect: "/patient/index",
-    meta: {
-      title: "患者采集",
-      icon: "Edit",
-      elIcon: "Edit",
-      svgIcon: "form"
-    },
     children: [
       {
         path: "index",
         component: () => import("@/pages/patient/index.vue"),
-        name: "PatientCollect",
+        name: "PatientInput",
         meta: {
-          title: "信息录入",
-          icon: "Edit",
-          elIcon: "Edit"
+          title: "信息采集",
+          elIcon: "Edit" // 明确指定使用 Element Plus 图标
         }
       }
     ]
   },
+
+  // --- 3. AI 诊断控制台 ---
   {
     path: "/diagnosis",
     component: Layout,
     redirect: "/diagnosis/index",
-    meta: {
-      title: "辅助诊断",
-      icon: "Monitor",
-      elIcon: "Monitor",
-      svgIcon: "example"
-    },
     children: [
       {
         path: "index",
         component: () => import("@/pages/diagnosis/index.vue"),
-        name: "AIDiagnosis",
+        name: "Diagnosis",
         meta: {
           title: "AI 诊断台",
-          icon: "MagicStick",
-          elIcon: "MagicStick"
+          elIcon: "Cpu" // 明确指定使用 Element Plus 图标
         }
       }
     ]
   },
+
+  // --- 4. 数据大屏 (独立展示) ---
   {
-    path: "/history",
+    path: "/dashboard",
     component: Layout,
-    redirect: "/history/index",
-    meta: {
-      title: "病历档案",
-      icon: "Document",
-      elIcon: "Document",
-      svgIcon: "documentation"
-    },
+    redirect: "/dashboard/index",
     children: [
       {
         path: "index",
-        component: () => import("@/pages/history/index.vue"),
-        name: "History",
+        component: () => import("@/pages/dashboard/index.vue"),
+        name: "Dashboard",
         meta: {
-          title: "历史记录",
-          icon: "Collection",
-          elIcon: "Collection"
+          title: "数据大屏",
+          elIcon: "DataLine" // 明确指定使用 Element Plus 图标
         }
       }
     ]
   }
 ]
 
-export const dynamicRoutes: RouteRecordRaw[] = []
+/**
+ * 动态路由
+ * 用来放置有权限 (Roles) 限制的路由
+ * 这里暂时为空，因为是演示项目
+ */
+export const asyncRoutes: RouteRecordRaw[] = []
 
+/** * 导出 dynamicRoutes 别名以解决 "doesn't provide an export named: 'dynamicRoutes'" 报错
+ */
+export const dynamicRoutes = asyncRoutes
+
+// 修改这里：使用 export const 导出 router 实例，以支持 { router } 这种具名导入
 export const router = createRouter({
-  history: routerConfig.history,
-  routes: routerConfig.thirdLevelRouteCache ? flatMultiLevelRoutes(constantRoutes) : constantRoutes
+  history: createWebHashHistory(),
+  routes: constantRoutes,
+  scrollBehavior: () => ({ left: 0, top: 0 })
 })
 
 /** 重置路由 */
 export function resetRouter() {
+  // 注意：所有动态路由路由必须带有 Name 属性，否则 cannot be removed
   try {
     router.getRoutes().forEach((route) => {
       const { name, meta } = route
       if (name && meta.roles?.length) {
-        router.hasRoute(name) && router.removeRoute(name)
+        router.removeRoute(name)
       }
     })
   } catch {
+    // 强制刷新浏览器
     window.location.reload()
   }
 }
 
-registerNavigationGuard(router)
+// 同时也保留默认导出，以支持 import router from ... 这种导入
+export default router

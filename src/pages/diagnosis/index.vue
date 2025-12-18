@@ -110,7 +110,7 @@ onMounted(() => {
               </div>
             </template>
 
-            <!-- 图像对比区域：使用 Grid + aspect-ratio -->
+            <!-- 图像对比区域 -->
             <div class="comparison-grid p-4 bg-gray-900">
                <div class="grid grid-cols-2 gap-3">
                  <!-- 原图 -->
@@ -166,7 +166,7 @@ onMounted(() => {
 
         <!-- RIGHT: KG & Report -->
         <el-col :span="14">
-          <!-- Knowledge Graph (高度已增加) -->
+          <!-- Knowledge Graph (使用 light 主题) -->
           <el-card class="mb-5 border-none shadow-md" body-style="padding:0">
             <template #header>
               <div class="flex justify-between items-center">
@@ -174,9 +174,9 @@ onMounted(() => {
                  <span class="text-xs text-gray-400">Geographical Reasoning</span>
               </div>
             </template>
-            <!-- 修改这里: 增加高度到 h-[500px] -->
+            <!-- 容器背景改为浅色，调用 theme="light" -->
             <div class="h-[500px] min-h-[500px] bg-slate-50 relative overflow-hidden">
-               <KnowledgeGraph />
+               <KnowledgeGraph theme="light" />
                <div class="absolute top-2 right-2 bg-white/90 p-2 rounded shadow text-xs z-10 border">
                  <b>推理路径:</b> 高海拔 -> 紫外线 -> 炎症 -> 干眼
                </div>
@@ -231,10 +231,9 @@ onMounted(() => {
           <div><b>检查科室:</b> 眼表疾病科</div>
         </div>
 
-        <!-- 详细影像展示 (重点展示区) -->
+        <!-- 详细影像展示 -->
         <div class="mb-6">
           <h3 class="font-bold border-l-4 border-blue-600 pl-2 mb-3">I. 多模态影像分析 (Multimodal Imaging)</h3>
-          <!-- 这里也使用 aspect-ratio 确保打印/预览时不走样 -->
           <div class="grid grid-cols-4 gap-2">
              <!-- 1. 睑板腺 -->
              <div class="border rounded p-1">

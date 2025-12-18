@@ -1,124 +1,113 @@
 <script lang="ts" setup>
-import { ref, onMounted, onUnmounted, nextTick } from "vue"
+import { ref, onMounted, onUnmounted, nextTick, watch } from "vue"
 import * as echarts from "echarts"
+
+// 接收父组件传递的主题参数
+const props = defineProps({
+  theme: {
+    type: String,
+    default: 'dark', // 默认深色模式
+    validator: (value: string) => ['dark', 'light'].includes(value)
+  }
+})
 
 const chartRef = ref<HTMLElement | null>(null)
 let myChart: echarts.ECharts | null = null
 
-// --- 1. 定义节点数据 (Nodes) ---
-// category: 0=核心, 1=眼部体征, 2=环境/生活, 3=全身疾病(预测目标)
+// --- 1. 节点数据 ---
 const nodes = [
-  // 核心
   { id: "0", name: "干眼症 (DED)", category: 0, symbolSize: 80, value: 100 },
-
-  // 眼部体征 (Signs) - 作为预测的中介桥梁
-  { id: "1", name: "泪膜破裂时间(BUT)短", category: 1, symbolSize: 40, value: 80 },
-  { id: "2", name: "泪液分泌量(Schirmer)低", category: 1, symbolSize: 40, value: 80 },
+  { id: "1", name: "TBUT缩短", category: 1, symbolSize: 40, value: 80 },
+  { id: "2", name: "Schirmer值低", category: 1, symbolSize: 40, value: 80 },
   { id: "3", name: "睑板腺萎缩", category: 1, symbolSize: 45, value: 85 },
   { id: "4", name: "角膜上皮缺损", category: 1, symbolSize: 35, value: 70 },
-  { id: "5", name: "角膜知觉减退", category: 1, symbolSize: 35, value: 75 }, // 糖尿病特异性体征
+  { id: "5", name: "角膜知觉减退", category: 1, symbolSize: 35, value: 75 },
   { id: "6", name: "眼睑闭合不全", category: 1, symbolSize: 30, value: 60 },
-
-  // 环境/生活因素 (Triggers)
-  { id: "7", name: "高海拔/强紫外线", category: 2, symbolSize: 30, value: 50 },
-  { id: "8", name: "视频终端综合征", category: 2, symbolSize: 35, value: 60 },
-  { id: "9", name: "长期佩戴隐形眼镜", category: 2, symbolSize: 25, value: 40 },
-  { id: "10", name: "空气湿度低", category: 2, symbolSize: 25, value: 40 },
-
-  // 全身重大疾病 (Systemic Diseases) - 预测目标
-  // 这些节点会做特殊的光效处理
+  { id: "7", name: "高海拔/紫外线", category: 2, symbolSize: 30, value: 50 },
+  { id: "8", name: "视屏终端综合征", category: 2, symbolSize: 35, value: 60 },
+  { id: "9", name: "隐形眼镜佩戴", category: 2, symbolSize: 25, value: 40 },
+  { id: "10", name: "低湿度环境", category: 2, symbolSize: 25, value: 40 },
   { id: "11", name: "2型糖尿病", category: 3, symbolSize: 60, value: 95 },
-  { id: "12", name: "干燥综合征 (SS)", category: 3, symbolSize: 65, value: 98 },
-  { id: "13", name: "类风湿性关节炎", category: 3, symbolSize: 55, value: 90 },
-  { id: "14", name: "甲状腺相关眼病", category: 3, symbolSize: 50, value: 85 },
-  { id: "15", name: "系统性红斑狼疮", category: 3, symbolSize: 50, value: 85 },
-  { id: "16", name: "焦虑/抑郁症", category: 3, symbolSize: 45, value: 80 }
+  { id: "12", name: "干燥综合征", category: 3, symbolSize: 65, value: 98 },
+  { id: "13", name: "类风湿关节炎", category: 3, symbolSize: 55, value: 90 },
+  { id: "14", name: "甲状腺眼病", category: 3, symbolSize: 50, value: 85 },
+  { id: "15", name: "红斑狼疮", category: 3, symbolSize: 50, value: 85 },
+  { id: "16", name: "焦虑/抑郁", category: 3, symbolSize: 45, value: 80 }
 ]
 
-// --- 2. 定义关系数据 (Links) ---
+// --- 2. 关系数据 ---
 const links = [
-  // 核心 -> 体征
   { source: "0", target: "1", label: { show: false } },
   { source: "0", target: "2", label: { show: false } },
   { source: "0", target: "3", label: { show: false } },
   { source: "0", target: "4", label: { show: false } },
   { source: "0", target: "5", label: { show: false } },
-
-  // 环境 -> 核心/体征
   { source: "7", target: "0", label: { formatter: "诱发" } },
   { source: "8", target: "1", label: { formatter: "加重" } },
   { source: "10", target: "0", label: { formatter: "环境关联" } },
-
-  // *** 关键路径：眼部特征 -> 全身疾病预测 ***
-  { source: "5", target: "11", label: { formatter: "高风险指征", show: true, fontSize: 10, color: '#ff4d4f' }, lineStyle: { color: '#ff4d4f', width: 2 } }, // 角膜知觉 -> 糖尿病
+  { source: "5", target: "11", label: { formatter: "高风险", show: true, color: '#ff4d4f' }, lineStyle: { color: '#ff4d4f', width: 2 } },
   { source: "1", target: "11", label: { formatter: "关联" } },
-
-  { source: "2", target: "12", label: { formatter: "强特异性", show: true, fontSize: 10, color: '#ff4d4f' }, lineStyle: { color: '#ff4d4f', width: 2 } }, // Schirmer低 -> 干燥综合征
-  { source: "4", target: "12", label: { formatter: "常见并发" } },
-
-  { source: "2", target: "13", label: { formatter: "自身免疫关联" } }, // Schirmer -> 类风湿
-
-  { source: "6", target: "14", label: { formatter: "眼球突出导致" } }, // 眼睑闭合不全 -> 甲状腺眼病
-  { source: "1", target: "14", label: { formatter: "泪液蒸发过快" } },
-
+  { source: "2", target: "12", label: { formatter: "特异性", show: true, color: '#ff4d4f' }, lineStyle: { color: '#ff4d4f', width: 2 } },
+  { source: "4", target: "12", label: { formatter: "并发" } },
+  { source: "2", target: "13", label: { formatter: "免疫关联" } },
+  { source: "6", target: "14", label: { formatter: "眼球突出" } },
+  { source: "1", target: "14", label: { formatter: "泪液蒸发" } },
   { source: "2", target: "15", label: { formatter: "免疫损伤" } },
-  { source: "0", target: "16", label: { formatter: "身心交互影响" } }
+  { source: "0", target: "16", label: { formatter: "身心影响" } }
 ]
 
 const categories = [
   { name: "核心病灶", itemStyle: { color: "#3b82f6" } },
-  { name: "眼部临床体征", itemStyle: { color: "#10b981" } },
-  { name: "环境/生活因素", itemStyle: { color: "#f59e0b" } },
-  { name: "全身关联疾病 (预测目标)", itemStyle: { color: "#f43f5e", shadowBlur: 10, shadowColor: "#f43f5e" } }
+  { name: "眼部体征", itemStyle: { color: "#10b981" } },
+  { name: "环境因素", itemStyle: { color: "#f59e0b" } },
+  { name: "全身疾病 (Target)", itemStyle: { color: "#f43f5e" } }
 ]
 
 const initChart = () => {
   if (!chartRef.value) return
+  if (myChart) myChart.dispose() // 重新初始化前销毁旧实例
+
   myChart = echarts.init(chartRef.value)
 
+  // 根据主题定义颜色配置
+  const isLight = props.theme === 'light'
+  const textColor = isLight ? '#333333' : '#ffffff'
+  const subTextColor = isLight ? '#666666' : '#cccccc'
+  const borderColor = isLight ? '#fff' : '#fff' // 节点描边
+
   const option = {
-    backgroundColor: 'transparent', // 适应深色背景
+    backgroundColor: 'transparent',
     tooltip: {
       trigger: 'item',
-      formatter: (params: any) => {
-        if (params.dataType === 'node') {
-          const cat = categories[params.data.category].name
-          return `<div style="padding:5px">
-                    <div style="font-weight:bold">${params.name}</div>
-                    <div style="font-size:12px;color:#ccc">${cat}</div>
-                    <div style="margin-top:5px;font-size:12px">关联强度: ${params.value}%</div>
-                  </div>`
-        }
-        // 连线提示
-        return `${params.data.source} > ${params.data.target} : ${params.data.label?.formatter || '关联'}`
-      },
       backgroundColor: 'rgba(50,50,50,0.9)',
       borderColor: '#777',
       textStyle: { color: '#fff' }
     },
     legend: {
       data: categories.map(a => a.name),
-      textStyle: { color: '#ccc' },
-      bottom: 10,
-      itemGap: 20
+      textStyle: { color: subTextColor }, // 动态图例颜色
+      bottom: 5,
+      itemGap: 15,
+      itemWidth: 10,
+      itemHeight: 10
     },
     animationDuration: 1500,
     animationEasingUpdate: 'quinticInOut',
     series: [
       {
-        name: 'Knowledge Graph',
         type: 'graph',
-        layout: 'force', // 力导向布局
+        layout: 'force',
         data: nodes,
         links: links,
         categories: categories,
-        roam: true, // 允许缩放和平移
+        roam: true,
         label: {
           show: true,
           position: 'right',
           formatter: '{b}',
-          color: '#fff',
-          fontSize: 12
+          color: textColor, // 动态文字颜色 (关键修改)
+          fontSize: 12,
+          fontWeight: isLight ? 'bold' : 'normal'
         },
         lineStyle: {
           color: 'source',
@@ -126,22 +115,19 @@ const initChart = () => {
           opacity: 0.6
         },
         force: {
-          repulsion: 400, // 节点斥力
-          gravity: 0.1,   // 向心力
-          edgeLength: [50, 150] // 边长范围
+          repulsion: 300,
+          gravity: 0.1,
+          edgeLength: [40, 100]
         },
         emphasis: {
-          focus: 'adjacency', // 聚焦相邻节点
-          lineStyle: {
-            width: 4
-          }
+          focus: 'adjacency',
+          lineStyle: { width: 3 }
         },
-        // 节点样式
         itemStyle: {
-          borderColor: '#fff',
+          borderColor: borderColor,
           borderWidth: 1,
           shadowBlur: 5,
-          shadowColor: 'rgba(0, 0, 0, 0.5)'
+          shadowColor: 'rgba(0, 0, 0, 0.2)'
         }
       }
     ]
@@ -149,10 +135,8 @@ const initChart = () => {
 
   myChart.setOption(option)
 
-  // --- 交互特效：点击全身疾病节点，高亮推理路径 ---
   myChart.on('click', (params: any) => {
     if (params.dataType === 'node' && params.data.category === 3) {
-      // 如果点击的是全身疾病
       myChart?.dispatchAction({
         type: 'highlight',
         seriesIndex: 0,
@@ -163,6 +147,11 @@ const initChart = () => {
 }
 
 const resize = () => myChart?.resize()
+
+// 监听主题变化，动态重绘
+watch(() => props.theme, () => {
+  initChart()
+})
 
 onMounted(() => {
   nextTick(() => {
@@ -180,47 +169,29 @@ onUnmounted(() => {
 <template>
   <div class="kg-wrapper">
     <div ref="chartRef" class="chart-container"></div>
-
-    <!-- 装饰性标题或图例说明 -->
-    <div class="kg-title-overlay">
-      <div class="glow-text">Systemic Disease Prediction Model</div>
-      <div class="sub-text">点击红色节点查看疾病推演路径</div>
+    <div class="kg-title-overlay" :class="theme">
+      <div class="glow-text">Disease Prediction Model</div>
+      <div class="sub-text">点击红色节点查看推理路径</div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.kg-wrapper {
-  width: 100%;
-  height: 100%;
-  position: relative;
-  overflow: hidden;
-}
+.kg-wrapper { width: 100%; height: 100%; position: relative; overflow: hidden; }
+.chart-container { width: 100%; height: 100%; }
+.kg-title-overlay { position: absolute; top: 10px; left: 15px; pointer-events: none; }
 
-.chart-container {
-  width: 100%;
-  height: 100%;
-}
-
-.kg-title-overlay {
-  position: absolute;
-  top: 15px;
-  left: 20px;
-  pointer-events: none; /* 让鼠标事件穿透到图表 */
-}
-
-.glow-text {
-  font-size: 16px;
-  font-weight: bold;
-  color: #fff;
+/* 深色模式文字 */
+.kg-title-overlay.dark .glow-text {
+  font-size: 14px; font-weight: bold; color: #fff;
   text-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  letter-spacing: 1px;
 }
+.kg-title-overlay.dark .sub-text { font-size: 11px; color: #94a3b8; }
 
-.sub-text {
-  font-size: 12px;
-  color: #94a3b8;
-  margin-top: 4px;
+/* 浅色模式文字 */
+.kg-title-overlay.light .glow-text {
+  font-size: 14px; font-weight: bold; color: #1e3a8a; /* 深蓝 */
+  text-shadow: none;
 }
+.kg-title-overlay.light .sub-text { font-size: 11px; color: #64748b; }
 </style>
