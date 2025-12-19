@@ -1,5 +1,9 @@
-import { type RouteRecordRaw, createRouter, createWebHashHistory } from "vue-router"
+import { type RouteRecordRaw, createRouter } from "vue-router"
+import { flatMultiLevelRoutes } from "./helper"
+import { routerConfig } from "./config"
+import { registerNavigationGuard } from "./guard"
 
+/* 1. 保持懒加载，防止 Pinia 报错 */
 const Layout = () => import("@/layouts/index.vue")
 
 /** 常驻路由 */
@@ -32,11 +36,11 @@ export const constantRoutes: RouteRecordRaw[] = [
     meta: { hidden: true }
   },
 
-  // --- 1. 医生工作台 (作为系统首页) ---
+  // --- 1. 医生工作台 (首页) ---
   {
     path: "/",
     component: Layout,
-    redirect: "/workbench",
+    redirect: "/workbench", // 默认跳到工作台
     children: [
       {
         path: "workbench",
@@ -44,50 +48,68 @@ export const constantRoutes: RouteRecordRaw[] = [
         name: "Workbench",
         meta: {
           title: "医生工作台",
-          svgIcon: "dashboard", // 使用 svgIcon 或 icon
-          affix: true      // 固定在 TagsView
+          icon: "Monitor",    // 兼容字段
+          elIcon: "Monitor",  // Element Plus 图标
+          svgIcon: "dashboard", // 你的项目中确实存在 dashboard.svg
+          affix: true
         }
       }
     ]
   },
 
-  // --- 2. 病人信息录入 ---
+  // --- 2. 核心业务功能路由 ---
+
+  // 患者采集
   {
     path: "/patient",
     component: Layout,
     redirect: "/patient/index",
+    meta: {
+      title: "患者采集",
+      icon: "Edit",
+      elIcon: "Edit"
+      // 移除不存在的 svgIcon "form" 以解决 TS 报错
+    },
     children: [
       {
         path: "index",
         component: () => import("@/pages/patient/index.vue"),
-        name: "PatientInput",
+        name: "PatientCollect",
         meta: {
-          title: "信息采集",
-          elIcon: "Edit" // 明确指定使用 Element Plus 图标
+          title: "信息录入",
+          icon: "Edit",
+          elIcon: "Edit"
         }
       }
     ]
   },
 
-  // --- 3. AI 诊断控制台 ---
+  // 辅助诊断
   {
     path: "/diagnosis",
     component: Layout,
     redirect: "/diagnosis/index",
+    meta: {
+      title: "辅助诊断",
+      icon: "Cpu",
+      elIcon: "Cpu"
+      // 移除不存在的 svgIcon "example"
+    },
     children: [
       {
         path: "index",
         component: () => import("@/pages/diagnosis/index.vue"),
-        name: "Diagnosis",
+        name: "AIDiagnosis",
         meta: {
           title: "AI 诊断台",
-          elIcon: "Cpu" // 明确指定使用 Element Plus 图标
+          icon: "Cpu",
+          elIcon: "Cpu"
         }
       }
     ]
   },
 
-  // --- 4. 数据大屏 (独立展示) ---
+  // 数据大屏
   {
     path: "/dashboard",
     component: Layout,
@@ -99,34 +121,48 @@ export const constantRoutes: RouteRecordRaw[] = [
         name: "Dashboard",
         meta: {
           title: "数据大屏",
-          elIcon: "DataLine" // 明确指定使用 Element Plus 图标
+          icon: "DataLine",
+          elIcon: "DataLine"
+          // 移除不存在的 svgIcon "chart"
+        }
+      }
+    ]
+  },
+
+  // 病历档案 (保留你原有的)
+  {
+    path: "/history",
+    component: Layout,
+    redirect: "/history/index",
+    meta: {
+      title: "病历档案",
+      icon: "Document",
+      elIcon: "Document"
+    },
+    children: [
+      {
+        path: "index",
+        component: () => import("@/pages/history/index.vue"),
+        name: "History",
+        meta: {
+          title: "历史记录",
+          icon: "Collection",
+          elIcon: "Collection"
         }
       }
     ]
   }
 ]
 
-/**
- * 动态路由
- * 用来放置有权限 (Roles) 限制的路由
- * 这里暂时为空，因为是演示项目
- */
-export const asyncRoutes: RouteRecordRaw[] = []
+export const dynamicRoutes: RouteRecordRaw[] = []
 
-/** * 导出 dynamicRoutes 别名以解决 "doesn't provide an export named: 'dynamicRoutes'" 报错
- */
-export const dynamicRoutes = asyncRoutes
-
-// 修改这里：使用 export const 导出 router 实例，以支持 { router } 这种具名导入
 export const router = createRouter({
-  history: createWebHashHistory(),
-  routes: constantRoutes,
-  scrollBehavior: () => ({ left: 0, top: 0 })
+  history: routerConfig.history,
+  routes: routerConfig.thirdLevelRouteCache ? flatMultiLevelRoutes(constantRoutes) : constantRoutes
 })
 
 /** 重置路由 */
 export function resetRouter() {
-  // 注意：所有动态路由路由必须带有 Name 属性，否则 cannot be removed
   try {
     router.getRoutes().forEach((route) => {
       const { name, meta } = route
@@ -135,10 +171,11 @@ export function resetRouter() {
       }
     })
   } catch {
-    // 强制刷新浏览器
     window.location.reload()
   }
 }
 
-// 同时也保留默认导出，以支持 import router from ... 这种导入
+// 关键：注册导航守卫，这是生成侧边栏菜单的核心！
+registerNavigationGuard(router)
+
 export default router
