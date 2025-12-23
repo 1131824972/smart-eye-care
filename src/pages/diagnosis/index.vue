@@ -116,13 +116,13 @@ onMounted(() => {
                  <!-- 原图 -->
                  <div class="relative rounded-lg overflow-hidden border border-gray-700 aspect-[4/3] group cursor-zoom-in">
                    <img src="@/common/assets/images/fundus-original.jpg" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                   <div class="absolute bottom-0 left-0 right-0 p-1 bg-black/60 text-center text-xs text-gray-300">原始影像 (Original)</div>
+                   <div class="absolute bottom-0 left-0 right-0 p-1 bg-black/60 text-center text-xs text-gray-300">原始影像</div>
                  </div>
                  <!-- 分割图 -->
                  <div class="relative rounded-lg overflow-hidden border border-gray-700 aspect-[4/3] group cursor-zoom-in">
                    <img src="@/common/assets/images/fundus-mask.jpg" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                    <div class="absolute inset-0 bg-green-500/20 mix-blend-overlay"></div> <!-- 绿色高亮叠加 -->
-                   <div class="absolute bottom-0 left-0 right-0 p-1 bg-black/60 text-center text-xs text-green-400">UNET 分割 (Mask)</div>
+                   <div class="absolute bottom-0 left-0 right-0 p-1 bg-black/60 text-center text-xs text-green-400">模型分割</div>
                  </div>
                </div>
             </div>
@@ -213,7 +213,7 @@ onMounted(() => {
     </el-drawer>
 
     <!-- 详细报告预览模态框 -->
-    <el-dialog v-model="showReportModal" title="详细诊断报告预览" width="800px" top="5vh" class="report-modal">
+    <el-dialog v-model="showReportModal" title="详细诊断报告预览" width="900px" top="5vh" class="report-modal">
       <div class="report-paper bg-white p-8 text-gray-800" id="print-area">
         <!-- 报告头 -->
         <div class="text-center border-b-2 border-gray-800 pb-4 mb-6">
@@ -231,24 +231,24 @@ onMounted(() => {
           <div><b>检查科室:</b> 眼表疾病科</div>
         </div>
 
-        <!-- 详细影像展示 -->
+        <!-- 详细影像展示 (6图布局) -->
         <div class="mb-6">
           <h3 class="font-bold border-l-4 border-blue-600 pl-2 mb-3">I. 多模态影像分析 (Multimodal Imaging)</h3>
-          <div class="grid grid-cols-4 gap-2">
+          <div class="grid grid-cols-3 gap-4">
              <!-- 1. 睑板腺 -->
              <div class="border rounded p-1">
                <div class="aspect-square bg-black overflow-hidden relative">
                   <img src="@/common/assets/images/meibo.jpg" class="w-full h-full object-contain" />
                </div>
-               <div class="text-[10px] text-center mt-1 font-bold">睑板腺 (Meibo)</div>
-               <div class="text-[10px] text-center text-red-500">缺失: 32%</div>
+               <div class="text-[10px] text-center mt-1 font-bold">睑板腺红外照</div>
+               <div class="text-[10px] text-center text-red-500">缺失率: 32%</div>
              </div>
              <!-- 2. 泪河 -->
              <div class="border rounded p-1">
                <div class="aspect-square bg-black overflow-hidden relative">
                   <img src="@/common/assets/images/tear.jpg" class="w-full h-full object-contain" />
                </div>
-               <div class="text-[10px] text-center mt-1 font-bold">泪河 (Tear)</div>
+               <div class="text-[10px] text-center mt-1 font-bold">泪河高度 (TMH)</div>
                <div class="text-[10px] text-center text-orange-500">高度: 0.18mm</div>
              </div>
              <!-- 3. 角膜 -->
@@ -256,16 +256,32 @@ onMounted(() => {
                <div class="aspect-square bg-black overflow-hidden relative">
                   <img src="@/common/assets/images/cornea.jpg" class="w-full h-full object-contain" />
                </div>
-               <div class="text-[10px] text-center mt-1 font-bold">角膜 (Cornea)</div>
-               <div class="text-[10px] text-center">荧光素染色 (+)</div>
+               <div class="text-[10px] text-center mt-1 font-bold">角膜荧光素染色</div>
+               <div class="text-[10px] text-center">点状缺损 (+)</div>
              </div>
-             <!-- 4. AI 分割 -->
+             <!-- 4. AI Mask -->
              <div class="border rounded p-1">
                <div class="aspect-square bg-black overflow-hidden relative">
                   <img src="@/common/assets/images/fundus-mask.jpg" class="w-full h-full object-contain" />
                </div>
-               <div class="text-[10px] text-center mt-1 font-bold text-green-600">AI Mask</div>
-               <div class="text-[10px] text-center">IoU: 0.89</div>
+               <div class="text-[10px] text-center mt-1 font-bold">AI 病灶分割 Mask</div>
+               <div class="text-[10px] text-center text-green-600">IoU: 0.89</div>
+             </div>
+             <!-- 5. 无血管层 (新增) -->
+             <div class="border rounded p-1">
+               <div class="aspect-square bg-black overflow-hidden relative">
+                  <img src="@/common/assets/images/1.jpg" class="w-full h-full object-cover" style="filter: hue-rotate(90deg);" />
+               </div>
+               <div class="text-[10px] text-center mt-1 font-bold">视网膜无血管层切面</div>
+               <div class="text-[10px] text-center text-orange-500">FAZ 区域形态分析</div>
+             </div>
+             <!-- 6. 新生血管 (新增) -->
+             <div class="border rounded p-1">
+               <div class="aspect-square bg-black overflow-hidden relative">
+                  <img src="@/common/assets/images/2.jpg" class="w-full h-full object-cover" />
+               </div>
+               <div class="text-[10px] text-center mt-1 font-bold">新生血管异常/出血点</div>
+               <div class="text-[10px] text-center text-red-500">检测到微血管异常</div>
              </div>
           </div>
         </div>
