@@ -1,98 +1,132 @@
 <script lang="ts" setup>
 import { ref, onMounted, onUnmounted, nextTick, watch } from "vue"
 import * as echarts from "echarts"
+import { useResizeObserver } from "@vueuse/core"
 
-// 接收父组件传递的主题参数
-const props = defineProps({
-  theme: {
-    type: String,
-    default: 'dark', // 默认深色模式
-    validator: (value: string) => ['dark', 'light'].includes(value)
-  }
-})
+const props = defineProps<{
+  theme?: "dark" | "light"
+}>()
 
 const chartRef = ref<HTMLElement | null>(null)
-let myChart: echarts.ECharts | null = null
+let chartInstance: echarts.ECharts | null = null
 
-// --- 1. 节点数据 ---
-const nodes = [
-  { id: "0", name: "干眼症 (DED)", category: 0, symbolSize: 80, value: 100 },
-  { id: "1", name: "TBUT缩短", category: 1, symbolSize: 40, value: 80 },
-  { id: "2", name: "Schirmer值低", category: 1, symbolSize: 40, value: 80 },
-  { id: "3", name: "睑板腺萎缩", category: 1, symbolSize: 45, value: 85 },
-  { id: "4", name: "角膜上皮缺损", category: 1, symbolSize: 35, value: 70 },
-  { id: "5", name: "角膜知觉减退", category: 1, symbolSize: 35, value: 75 },
-  { id: "6", name: "眼睑闭合不全", category: 1, symbolSize: 30, value: 60 },
-  { id: "7", name: "高海拔/紫外线", category: 2, symbolSize: 30, value: 50 },
-  { id: "8", name: "视屏终端综合征", category: 2, symbolSize: 35, value: 60 },
-  { id: "9", name: "隐形眼镜佩戴", category: 2, symbolSize: 25, value: 40 },
-  { id: "10", name: "低湿度环境", category: 2, symbolSize: 25, value: 40 },
-  { id: "11", name: "2型糖尿病", category: 3, symbolSize: 60, value: 95 },
-  { id: "12", name: "干燥综合征", category: 3, symbolSize: 65, value: 98 },
-  { id: "13", name: "类风湿关节炎", category: 3, symbolSize: 55, value: 90 },
-  { id: "14", name: "甲状腺眼病", category: 3, symbolSize: 50, value: 85 },
-  { id: "15", name: "红斑狼疮", category: 3, symbolSize: 50, value: 85 },
-  { id: "16", name: "焦虑/抑郁", category: 3, symbolSize: 45, value: 80 }
-]
+// --- 高级配色方案 (Teal Theme) ---
+const colors = {
+  core: "#2dd4bf",      // 核心节点 (Teal-400)
+  mechanism: "#0ea5e9", // 病理机制 (Sky-500)
+  etiology: "#f59e0b",  // 病因 (Amber-500)
+  symptom: "#f43f5e",   // 症状 (Rose-500)
+  treatment: "#10b981", // 治疗 (Emerald-500)
+  exam: "#8b5cf6"       // 检查 (Violet-500)
+}
 
-// --- 2. 关系数据 ---
-const links = [
-  { source: "0", target: "1", label: { show: false } },
-  { source: "0", target: "2", label: { show: false } },
-  { source: "0", target: "3", label: { show: false } },
-  { source: "0", target: "4", label: { show: false } },
-  { source: "0", target: "5", label: { show: false } },
-  { source: "7", target: "0", label: { formatter: "诱发" } },
-  { source: "8", target: "1", label: { formatter: "加重" } },
-  { source: "10", target: "0", label: { formatter: "环境关联" } },
-  { source: "5", target: "11", label: { formatter: "高风险", show: true, color: '#ff4d4f' }, lineStyle: { color: '#ff4d4f', width: 2 } },
-  { source: "1", target: "11", label: { formatter: "关联" } },
-  { source: "2", target: "12", label: { formatter: "特异性", show: true, color: '#ff4d4f' }, lineStyle: { color: '#ff4d4f', width: 2 } },
-  { source: "4", target: "12", label: { formatter: "并发" } },
-  { source: "2", target: "13", label: { formatter: "免疫关联" } },
-  { source: "6", target: "14", label: { formatter: "眼球突出" } },
-  { source: "1", target: "14", label: { formatter: "泪液蒸发" } },
-  { source: "2", target: "15", label: { formatter: "免疫损伤" } },
-  { source: "0", target: "16", label: { formatter: "身心影响" } }
-]
-
+// --- 专业眼科数据构建 ---
 const categories = [
-  { name: "核心病灶", itemStyle: { color: "#3b82f6" } },
-  { name: "眼部体征", itemStyle: { color: "#10b981" } },
-  { name: "环境因素", itemStyle: { color: "#f59e0b" } },
-  { name: "全身疾病 (Target)", itemStyle: { color: "#f43f5e" } }
+  { name: "核心疾病" },
+  { name: "病理机制" },
+  { name: "致病因素" },
+  { name: "典型症状" },
+  { name: "诊疗手段" },
+  { name: "临床检查" }
+]
+
+const nodes = [
+  // Level 0: Core
+  { id: "0", name: "干眼症 (DED)", symbolSize: 80, category: 0, value: 100, itemStyle: { color: colors.core, shadowBlur: 20, shadowColor: colors.core } },
+
+  // Level 1: Mechanisms (病机)
+  { id: "1", name: "泪膜不稳定", symbolSize: 50, category: 1, itemStyle: { color: colors.mechanism } },
+  { id: "2", name: "泪液高渗", symbolSize: 50, category: 1, itemStyle: { color: colors.mechanism } },
+  { id: "3", name: "眼表炎症", symbolSize: 45, category: 1, itemStyle: { color: colors.mechanism } },
+  { id: "4", name: "神经感觉异常", symbolSize: 40, category: 1, itemStyle: { color: colors.mechanism } },
+
+  // Level 2: Etiology (病因)
+  { id: "5", name: "MGD (睑板腺功能障碍)", symbolSize: 60, category: 2, itemStyle: { color: colors.etiology } },
+  { id: "6", name: "蠕形螨感染", symbolSize: 35, category: 2, itemStyle: { color: colors.etiology } },
+  { id: "7", name: "VDT (视频终端)", symbolSize: 45, category: 2, itemStyle: { color: colors.etiology } },
+  { id: "8", name: "隐形眼镜佩戴", symbolSize: 35, category: 2, itemStyle: { color: colors.etiology } },
+  { id: "9", name: "干燥环境", symbolSize: 30, category: 2, itemStyle: { color: colors.etiology } },
+  { id: "10", name: "睡眠障碍", symbolSize: 30, category: 2, itemStyle: { color: colors.etiology } },
+
+  // Level 3: Symptoms (症状)
+  { id: "11", name: "眼干涩", symbolSize: 30, category: 3, itemStyle: { color: colors.symptom } },
+  { id: "12", name: "异物感", symbolSize: 30, category: 3, itemStyle: { color: colors.symptom } },
+  { id: "13", name: "视力波动", symbolSize: 35, category: 3, itemStyle: { color: colors.symptom } },
+  { id: "14", name: "畏光流泪", symbolSize: 30, category: 3, itemStyle: { color: colors.symptom } },
+
+  // Level 4: Treatment (治疗)
+  { id: "15", name: "人工泪液", symbolSize: 40, category: 4, itemStyle: { color: colors.treatment } },
+  { id: "16", name: "IPL 强脉冲光", symbolSize: 50, category: 4, itemStyle: { color: colors.treatment } },
+  { id: "17", name: "睑板腺按摩", symbolSize: 40, category: 4, itemStyle: { color: colors.treatment } },
+  { id: "18", name: "湿房镜", symbolSize: 35, category: 4, itemStyle: { color: colors.treatment } },
+  { id: "19", name: "抗炎药物", symbolSize: 35, category: 4, itemStyle: { color: colors.treatment } },
+
+  // Level 5: Exam (检查)
+  { id: "20", name: "BUT (泪膜破裂)", symbolSize: 45, category: 5, itemStyle: { color: colors.exam } },
+  { id: "21", name: "泪河高度", symbolSize: 40, category: 5, itemStyle: { color: colors.exam } },
+  { id: "22", name: "睑板腺照相", symbolSize: 45, category: 5, itemStyle: { color: colors.exam } },
+  { id: "23", name: "OSDI 评分", symbolSize: 40, category: 5, itemStyle: { color: colors.exam } },
+]
+
+const links = [
+  // Core -> Mechanism
+  { source: "0", target: "1" }, { source: "0", target: "2" }, { source: "0", target: "3" }, { source: "0", target: "4" },
+
+  // Mechanism -> Etiology (Causality)
+  { source: "5", target: "1" }, // MGD -> 泪膜不稳定
+  { source: "5", target: "2" }, // MGD -> 蒸发过强 -> 高渗
+  { source: "6", target: "5" }, // 螨虫 -> MGD
+  { source: "7", target: "1" }, // VDT -> 瞬目减少 -> 泪膜不稳定
+  { source: "8", target: "3" }, // 隐形眼镜 -> 炎症
+  { source: "9", target: "2" }, // 干燥 -> 高渗
+  { source: "10", target: "4"}, // 睡眠 -> 神经痛
+
+  // Symptom Links
+  { source: "1", target: "13" }, // 不稳定 -> 视力波动
+  { source: "3", target: "11" }, // 炎症 -> 干涩
+  { source: "3", target: "12" }, // 炎症 -> 异物感
+  { source: "4", target: "14" }, // 神经 -> 畏光
+
+  // Diagnosis Links
+  { source: "20", target: "1" }, // BUT 诊断 不稳定
+  { source: "21", target: "2" }, // 泪河 诊断 缺水
+  { source: "22", target: "5" }, // 照相 诊断 MGD
+  { source: "23", target: "0" }, // OSDI 诊断 DED
+
+  // Treatment Links (Therapeutic targets)
+  { source: "15", target: "2" }, // 人工泪液 -> 降高渗
+  { source: "16", target: "5" }, // IPL -> MGD
+  { source: "16", target: "3" }, // IPL -> 抗炎
+  { source: "17", target: "5" }, // 按摩 -> MGD
+  { source: "18", target: "9" }, // 湿房镜 -> 环境
+  { source: "19", target: "3" }, // 药物 -> 炎症
 ]
 
 const initChart = () => {
   if (!chartRef.value) return
-  if (myChart) myChart.dispose() // 重新初始化前销毁旧实例
-
-  myChart = echarts.init(chartRef.value)
-
-  // 根据主题定义颜色配置
-  const isLight = props.theme === 'light'
-  const textColor = isLight ? '#333333' : '#ffffff'
-  const subTextColor = isLight ? '#666666' : '#cccccc'
-  const borderColor = isLight ? '#fff' : '#fff' // 节点描边
+  chartInstance = echarts.init(chartRef.value)
 
   const option = {
     backgroundColor: 'transparent',
     tooltip: {
       trigger: 'item',
-      backgroundColor: 'rgba(50,50,50,0.9)',
-      borderColor: '#777',
-      textStyle: { color: '#fff' }
+      backgroundColor: 'rgba(15, 23, 42, 0.9)',
+      borderColor: '#14b8a6',
+      textStyle: { color: '#fff' },
+      formatter: (params: any) => {
+        if (params.dataType === 'node') {
+          return `<div style="font-weight:bold">${params.name}</div><div style="font-size:12px;color:#94a3b8">${params.data.category < 6 ? categories[params.data.category].name : ''}</div>`
+        }
+        return `${params.data.source} <span style="color:#94a3b8">→</span> ${params.data.target}`
+      }
     },
     legend: {
-      data: categories.map(a => a.name),
-      textStyle: { color: subTextColor }, // 动态图例颜色
-      bottom: 5,
-      itemGap: 15,
-      itemWidth: 10,
-      itemHeight: 10
+      show: true,
+      bottom: 20,
+      textStyle: { color: props.theme === 'light' ? '#64748b' : '#cbd5e1' },
+      data: categories.map(c => c.name),
+      selectedMode: 'multiple'
     },
-    animationDuration: 1500,
-    animationEasingUpdate: 'quinticInOut',
     series: [
       {
         type: 'graph',
@@ -104,94 +138,150 @@ const initChart = () => {
         label: {
           show: true,
           position: 'right',
-          formatter: '{b}',
-          color: textColor, // 动态文字颜色 (关键修改)
-          fontSize: 12,
-          fontWeight: isLight ? 'bold' : 'normal'
-        },
-        lineStyle: {
-          color: 'source',
-          curveness: 0.3,
-          opacity: 0.6
+          color: props.theme === 'light' ? '#334155' : '#e2e8f0',
+          fontSize: 12
         },
         force: {
-          repulsion: 300,
-          gravity: 0.1,
-          edgeLength: [40, 100]
+          repulsion: 400,
+          edgeLength: [50, 150],
+          gravity: 0.1
+        },
+        lineStyle: {
+          color: props.theme === 'light' ? '#cbd5e1' : '#475569',
+          curveness: 0.3,
+          width: 1.5,
+          opacity: 0.6
+        },
+        itemStyle: {
+          borderColor: '#fff',
+          borderWidth: 1,
+          shadowBlur: 10
         },
         emphasis: {
           focus: 'adjacency',
-          lineStyle: { width: 3 }
-        },
-        itemStyle: {
-          borderColor: borderColor,
-          borderWidth: 1,
-          shadowBlur: 5,
-          shadowColor: 'rgba(0, 0, 0, 0.2)'
+          scale: true,
+          lineStyle: {
+            width: 3,
+            color: '#14b8a6',
+            opacity: 1
+          },
+          label: {
+            fontWeight: 'bold',
+            fontSize: 14
+          }
         }
       }
     ]
   }
 
-  myChart.setOption(option)
-
-  myChart.on('click', (params: any) => {
-    if (params.dataType === 'node' && params.data.category === 3) {
-      myChart?.dispatchAction({
-        type: 'highlight',
-        seriesIndex: 0,
-        name: params.name
-      })
-    }
-  })
+  chartInstance.setOption(option)
 }
 
-const resize = () => myChart?.resize()
-
-// 监听主题变化，动态重绘
 watch(() => props.theme, () => {
-  initChart()
+  if (chartInstance) {
+    chartInstance.dispose()
+    initChart()
+  }
+})
+
+useResizeObserver(chartRef, () => {
+  chartInstance?.resize()
 })
 
 onMounted(() => {
-  nextTick(() => {
-    initChart()
-    window.addEventListener("resize", resize)
-  })
+  nextTick(() => initChart())
 })
 
 onUnmounted(() => {
-  window.removeEventListener("resize", resize)
-  myChart?.dispose()
+  chartInstance?.dispose()
 })
 </script>
 
 <template>
-  <div class="kg-wrapper">
+  <div class="graph-wrapper">
+    <!-- 图谱容器 -->
     <div ref="chartRef" class="chart-container"></div>
-    <div class="kg-title-overlay" :class="theme">
-      <div class="glow-text">Disease Prediction Model</div>
-      <div class="sub-text">点击红色节点查看推理路径</div>
+
+    <!-- 装饰性 UI：模拟高级数据面板 -->
+    <div class="overlay-panel top-left">
+      <div class="panel-title">PATHOLOGY NET</div>
+      <div class="panel-val">Nodes: {{ nodes.length }}</div>
+    </div>
+
+    <div class="overlay-panel bottom-right">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="dot bg-teal-400"></span>
+        <span class="text-xs text-slate-400">Core Disease</span>
+      </div>
+      <div class="flex items-center gap-2 mb-1">
+        <span class="dot bg-amber-400"></span>
+        <span class="text-xs text-slate-400">Risk Factor</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="dot bg-emerald-400"></span>
+        <span class="text-xs text-slate-400">Treatment</span>
+      </div>
     </div>
   </div>
 </template>
 
-<style scoped>
-.kg-wrapper { width: 100%; height: 100%; position: relative; overflow: hidden; }
-.chart-container { width: 100%; height: 100%; }
-.kg-title-overlay { position: absolute; top: 10px; left: 15px; pointer-events: none; }
-
-/* 深色模式文字 */
-.kg-title-overlay.dark .glow-text {
-  font-size: 14px; font-weight: bold; color: #fff;
-  text-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
+<style scoped lang="scss">
+.graph-wrapper {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  /* 极淡的网格背景，增加科技感 */
+  background-image:
+    linear-gradient(rgba(20, 184, 166, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(20, 184, 166, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
-.kg-title-overlay.dark .sub-text { font-size: 11px; color: #94a3b8; }
 
-/* 浅色模式文字 */
-.kg-title-overlay.light .glow-text {
-  font-size: 14px; font-weight: bold; color: #1e3a8a; /* 深蓝 */
-  text-shadow: none;
+.chart-container {
+  width: 100%;
+  height: 100%;
 }
-.kg-title-overlay.light .sub-text { font-size: 11px; color: #64748b; }
+
+.overlay-panel {
+  position: absolute;
+  pointer-events: none;
+  z-index: 10;
+
+  &.top-left {
+    top: 20px;
+    left: 20px;
+    border-left: 2px solid #14b8a6;
+    padding-left: 10px;
+
+    .panel-title {
+      font-size: 10px;
+      color: #94a3b8;
+      letter-spacing: 2px;
+      font-weight: bold;
+    }
+    .panel-val {
+      font-family: monospace;
+      font-size: 16px;
+      color: #14b8a6;
+    }
+  }
+
+  &.bottom-right {
+    bottom: 60px; /* 避开 ECharts Legend */
+    right: 20px;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.05);
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      box-shadow: 0 0 5px currentColor;
+    }
+  }
+}
 </style>

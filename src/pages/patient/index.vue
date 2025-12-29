@@ -24,11 +24,12 @@ import PatientInput from "./components/PatientInput.vue"
 }
 
 .header-banner {
-  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+  /* 修改：从 Blue 渐变改为 Slate -> Teal 渐变 */
+  background: linear-gradient(135deg, #0f172a 0%, #0d9488 100%);
   color: white;
   padding: 40px 20px;
   text-align: center;
-  margin-bottom: -40px; /* 让下面的卡片浮上来 */
+  margin-bottom: -40px;
 }
 
 .header-banner h1 {
@@ -40,15 +41,17 @@ import PatientInput from "./components/PatientInput.vue"
 
 .header-banner .badge {
   font-size: 1rem;
-  background: rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.15);
   padding: 2px 8px;
   border-radius: 4px;
   vertical-align: middle;
+  border: 1px solid rgba(255,255,255,0.2);
 }
 
 .header-banner p {
-  opacity: 0.9;
+  opacity: 0.8;
   font-size: 1.1rem;
+  color: #ccfbf1; /* 浅 Teal 色文字 */
 }
 
 .main-body {

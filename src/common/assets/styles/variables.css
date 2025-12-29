@@ -1,10 +1,11 @@
-/* 全局 CSS 变量，这种变量不仅可以在 CSS 和 SCSS 中使用，还可以导入到 JS 中使用 */
+/* 全局 CSS 变量 */
 
 :root {
-  /* Body */
+  /* --- Body & Layout --- */
   --v3-body-text-color: var(--el-text-color-primary);
   --v3-body-bg-color: var(--el-bg-color-page);
-  /* Header 区域 = NavigationBar 组件 + TagsView 组件 */
+
+  /* --- Header 区域 --- */
   --v3-header-height: calc(
     var(--v3-navigationbar-height) + var(--v3-tagsview-height) + var(--v3-header-border-bottom-width)
   );
@@ -12,61 +13,81 @@
   --v3-header-box-shadow: var(--el-box-shadow-lighter);
   --v3-header-border-bottom-width: 1px;
   --v3-header-border-bottom: var(--v3-header-border-bottom-width) solid var(--el-fill-color);
-  /* NavigationBar 组件 */
+
+  /* --- NavigationBar 组件 --- */
   --v3-navigationbar-height: 50px;
   --v3-navigationbar-text-color: var(--el-text-color-regular);
-  /* Sidebar 组件（左侧模式全部生效、顶部模式全部不生效、混合模式非颜色部分生效） */
+
+  /* --- Sidebar 组件 (深岩灰 + 松石绿) --- */
   --v3-sidebar-width: 220px;
   --v3-sidebar-hide-width: 58px;
   --v3-sidebar-border-right: 1px solid var(--el-fill-color);
   --v3-sidebar-menu-item-height: 60px;
-  --v3-sidebar-menu-tip-line-bg-color: var(--el-color-primary);
-  --v3-sidebar-menu-bg-color: #001428;
-  --v3-sidebar-menu-hover-bg-color: #409eff10;
-  --v3-sidebar-menu-text-color: #cfd3dc;
+
+  /* 侧边栏高亮条: 松石绿 */
+  --v3-sidebar-menu-tip-line-bg-color: #14b8a6;
+  /* 侧边栏背景: 深岩灰 (Slate-900) */
+  --v3-sidebar-menu-bg-color: #0f172a;
+  /* 悬停背景: 松石绿低透明度 */
+  --v3-sidebar-menu-hover-bg-color: rgba(20, 184, 166, 0.1);
+  /* 文字颜色 */
+  --v3-sidebar-menu-text-color: #cbd5e1;
   --v3-sidebar-menu-active-text-color: #ffffff;
-  /* TagsView 组件 */
+
+  /* --- TagsView 组件 (标签栏) --- */
   --v3-tagsview-height: 34px;
   --v3-tagsview-text-color: var(--el-text-color-regular);
   --v3-tagsview-tag-active-text-color: #ffffff;
   --v3-tagsview-tag-bg-color: var(--el-bg-color);
-  --v3-tagsview-tag-active-bg-color: var(--el-color-primary);
+
+  /* 激活标签: 松石绿背景 */
+  --v3-tagsview-tag-active-bg-color: #14b8a6;
   --v3-tagsview-tag-border-radius: 2px;
   --v3-tagsview-tag-border-color: var(--el-border-color-lighter);
-  --v3-tagsview-tag-active-border-color: var(--el-color-primary);
-  --v3-tagsview-tag-icon-hover-bg-color: #00000030;
+  --v3-tagsview-tag-active-border-color: #14b8a6;
+
+  /* 关闭图标悬停 */
+  --v3-tagsview-tag-icon-hover-bg-color: #0d9488;
   --v3-tagsview-tag-icon-hover-color: #ffffff;
+
   --v3-tagsview-contextmenu-text-color: var(--el-text-color-regular);
   --v3-tagsview-contextmenu-hover-text-color: var(--el-text-color-primary);
   --v3-tagsview-contextmenu-bg-color: var(--el-bg-color-overlay);
   --v3-tagsview-contextmenu-hover-bg-color: var(--el-fill-color);
   --v3-tagsview-contextmenu-box-shadow: var(--el-box-shadow);
-  /* Hamburger 组件 */
+
+  /* --- Hamburger 组件 --- */
   --v3-hamburger-text-color: var(--el-text-color-primary);
-  /* RightPanel 组件  */
-  --v3-rightpanel-button-bg-color: #001428;
+
+  /* --- RightPanel 组件 --- */
+  --v3-rightpanel-button-bg-color: #0f172a;
+
+  /* * ==============================================
+   * Element Plus 核心颜色覆盖 (Button, Input, Switch等)
+   * 主色调: Medical Teal (#14b8a6)
+   * ==============================================
+   */
+  --el-color-primary: #14b8a6;
+  --el-color-primary-light-3: #5eead4; /* Hover 状态 */
+  --el-color-primary-light-5: #99f6e4;
+  --el-color-primary-light-7: #ccfbf1;
+  --el-color-primary-light-8: #e6fffa;
+  --el-color-primary-light-9: #f0fdfa; /* 极浅背景 */
+  --el-color-primary-dark-2: #0f766e;  /* Active/Click 状态 */
 }
 
-/* 内容区放大时，将不需要的组件隐藏 */
+/* 响应式辅助类 */
 body.content-large {
-  /* Header 区域 = TagsView 组件 */
   --v3-header-height: var(--v3-tagsview-height);
-  /* NavigationBar 组件 */
   --v3-navigationbar-height: 0px;
-  /* Sidebar 组件 */
   --v3-sidebar-width: 0px;
   --v3-sidebar-hide-width: 0px;
 }
 
-/* 内容区全屏时，将不需要的组件隐藏 */
 body.content-full {
-  /* Header 区域 */
   --v3-header-height: 0px;
-  /* NavigationBar 组件 */
   --v3-navigationbar-height: 0px;
-  /* Sidebar 组件 */
   --v3-sidebar-width: 0px;
   --v3-sidebar-hide-width: 0px;
-  /* TagsView 组件 */
   --v3-tagsview-height: 0px;
 }

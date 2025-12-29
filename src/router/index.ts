@@ -19,6 +19,7 @@ export const constantRoutes: RouteRecordRaw[] = [
       }
     ]
   },
+
   {
     path: "/403",
     component: () => import("@/pages/error/403.vue"),
@@ -104,6 +105,27 @@ export const constantRoutes: RouteRecordRaw[] = [
           title: "AI 诊断台",
           icon: "Cpu",
           elIcon: "Cpu"
+        }
+      }
+    ]
+  },
+  {
+    path: "/ai-chat",
+    component: Layout, // 使用 Layout 包裹，保持左侧菜单栏
+    redirect: "/ai-chat/index",
+    meta: {
+      title: "AI 智能问答",
+      elIcon: "ChatDotRound", // 使用 Chat 图标
+      alwaysShow: true // 确保在菜单中显示
+    },
+    children: [
+      {
+        path: "index",
+        component: () => import("@/pages/ai-chat/index.vue"),
+        name: "AiChat",
+        meta: {
+          title: "AI 诊疗副驾驶",
+          keepAlive: true // 保持聊天状态
         }
       }
     ]

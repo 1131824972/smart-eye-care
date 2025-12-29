@@ -12,25 +12,25 @@ const loading = ref(false)
 const loginFormRef = ref<FormInstance | null>(null)
 const loginForm = reactive({ username: "admin", password: "123", code: "" })
 
-// === 模拟资讯数据，填充登录页内容 ===
+// 资讯列表配色调整：使用 Teal/Green/Amber
 const newsList = [
   {
     type: '公告',
     title: '系统维护通知：KAN 模型引擎将于今晚 02:00 进行升级',
     icon: Bell,
-    color: '#E6A23C'
+    color: '#f59e0b' // Amber
   },
   {
     type: '排班',
     title: '今日专家：张伟主任 (眼表疾病科) 09:00-17:00 坐诊',
     icon: User,
-    color: '#409EFF'
+    color: '#14b8a6' // Teal
   },
   {
     type: '知识',
     title: '干眼症小贴士：高海拔地区紫外线强，建议患者户外佩戴护目镜',
     icon: ChatDotRound,
-    color: '#67C23A'
+    color: '#10b981' // Emerald
   }
 ]
 
@@ -51,7 +51,7 @@ function drawCaptcha() {
   canvas.height = height
   const ctx = canvas.getContext("2d")
   if (!ctx) return
-  ctx.fillStyle = "#f2f6fc" // 浅灰背景
+  ctx.fillStyle = "#f0fdfa" // 浅 Teal 背景
   ctx.fillRect(0, 0, width, height)
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
   let code = ""
@@ -59,7 +59,8 @@ function drawCaptcha() {
     const char = chars.charAt(Math.floor(Math.random() * chars.length))
     code += char
     ctx.font = "bold 24px Arial"
-    ctx.fillStyle = `#${Math.random().toString(16).slice(2, 8)}`
+    // 随机色改为深色系，确保对比度
+    ctx.fillStyle = `#${Math.floor(Math.random() * 0x555555).toString(16)}`
     ctx.save()
     ctx.translate(20 + i * 25, 28)
     ctx.rotate((Math.random() - 0.5) * 0.4)
@@ -99,7 +100,6 @@ function handleLogin() {
 
 <template>
   <div class="login-container">
-    <!-- 左侧：品牌与资讯展示 -->
     <div class="login-left">
       <div class="left-content">
         <div class="brand">
@@ -113,7 +113,7 @@ function handleLogin() {
         <div class="news-panel">
           <div class="panel-header">
             <span><el-icon><Clock /></el-icon> 实时动态</span>
-            <el-tag size="small" effect="plain">Live</el-tag>
+            <el-tag size="small" effect="plain" type="success">Live</el-tag>
           </div>
           <div class="news-list">
             <div v-for="(item, i) in newsList" :key="i" class="news-item">
@@ -143,12 +143,11 @@ function handleLogin() {
           </div>
         </div>
       </div>
-      <!-- 背景装饰 -->
+      <!-- 背景光晕装饰 -->
       <div class="circle c1"></div>
       <div class="circle c2"></div>
     </div>
 
-    <!-- 右侧：登录表单 -->
     <div class="login-right">
       <div class="form-wrapper">
         <div class="form-header">
@@ -191,10 +190,10 @@ function handleLogin() {
   overflow: hidden;
 }
 
-/* 左侧样式 */
 .login-left {
   flex: 1;
-  background: linear-gradient(135deg, #001529 0%, #00467F 100%);
+  /* 核心修改：Slate -> Teal 渐变 */
+  background: linear-gradient(135deg, #0f172a 0%, #115e59 100%);
   position: relative;
   display: flex;
   align-items: center;
@@ -215,16 +214,17 @@ function handleLogin() {
     margin-bottom: 50px;
     .logo { width: 60px; height: 60px; margin-right: 20px; }
     h1 { font-size: 28px; margin: 0 0 5px 0; font-weight: 600; }
-    p { margin: 0; opacity: 0.7; font-size: 14px; letter-spacing: 1px; }
+    p { margin: 0; opacity: 0.8; font-size: 14px; letter-spacing: 1px; color: #ccfbf1; }
   }
 
   .news-panel {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
+    background: rgba(15, 23, 42, 0.4); /* 深色玻璃 */
+    backdrop-filter: blur(12px);
     border-radius: 16px;
     padding: 25px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     margin-bottom: 40px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
 
     .panel-header {
       display: flex;
@@ -232,7 +232,7 @@ function handleLogin() {
       align-items: center;
       margin-bottom: 20px;
       font-size: 14px;
-      opacity: 0.9;
+      color: #e2e8f0;
     }
 
     .news-item {
@@ -242,21 +242,16 @@ function handleLogin() {
       &:last-child { margin-bottom: 0; }
 
       .icon-box {
-        width: 36px;
-        height: 36px;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 15px;
-        flex-shrink: 0;
+        width: 36px; height: 36px; border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        margin-right: 15px; flex-shrink: 0;
       }
 
       .content {
         font-size: 13px;
         line-height: 1.5;
         .tag { font-weight: bold; margin-right: 5px; }
-        .desc { opacity: 0.8; }
+        .desc { color: #cbd5e1; }
       }
     }
   }
@@ -266,23 +261,22 @@ function handleLogin() {
     justify-content: space-between;
     text-align: center;
     .stat-item {
-      h2 { font-size: 32px; margin: 0; font-weight: bold; }
-      p { margin: 5px 0 0 0; font-size: 12px; opacity: 0.6; }
+      h2 { font-size: 32px; margin: 0; font-weight: bold; color: #fff; }
+      p { margin: 5px 0 0 0; font-size: 12px; color: #94a3b8; }
     }
   }
 
-  /* 装饰背景圆 */
   .circle {
     position: absolute;
     border-radius: 50%;
     filter: blur(80px);
     opacity: 0.4;
   }
-  .c1 { width: 300px; height: 300px; background: #00eaff; top: -50px; left: -50px; }
-  .c2 { width: 400px; height: 400px; background: #409eff; bottom: -100px; right: -100px; }
+  /* 光晕颜色改为 Teal/Cyan */
+  .c1 { width: 300px; height: 300px; background: #14b8a6; top: -50px; left: -50px; }
+  .c2 { width: 400px; height: 400px; background: #0ea5e9; bottom: -100px; right: -100px; }
 }
 
-/* 右侧表单样式 */
 .login-right {
   width: 500px;
   display: flex;
@@ -290,37 +284,15 @@ function handleLogin() {
   justify-content: center;
   background-color: #fff;
 
-  .form-wrapper {
-    width: 360px;
-  }
-
+  .form-wrapper { width: 360px; }
   .form-header {
     margin-bottom: 40px;
-    h2 { font-size: 28px; color: #333; margin-bottom: 10px; font-weight: bold; }
-    p { color: #999; font-size: 14px; }
+    h2 { font-size: 28px; color: #0f172a; margin-bottom: 10px; font-weight: bold; }
+    p { color: #64748b; font-size: 14px; }
   }
-
-  .code-layout {
-    display: flex;
-    gap: 12px;
-    width: 100%;
-    .code-img { height: 40px; cursor: pointer; border: 1px solid #dcdfe6; border-radius: 4px; }
-  }
-
-  .submit-btn {
-    width: 100%;
-    height: 44px;
-    font-size: 16px;
-    margin-top: 10px;
-    letter-spacing: 2px;
-  }
-
-  .form-footer {
-    text-align: center;
-    margin-top: 20px;
-    font-size: 12px;
-    color: #ccc;
-  }
+  .code-layout { display: flex; gap: 12px; width: 100%; .code-img { height: 40px; cursor: pointer; border: 1px solid #dcdfe6; border-radius: 4px; } }
+  .submit-btn { width: 100%; height: 44px; font-size: 16px; margin-top: 10px; letter-spacing: 2px; font-weight: bold;}
+  .form-footer { text-align: center; margin-top: 20px; font-size: 12px; color: #94a3b8; }
 }
 
 @media (max-width: 900px) {
